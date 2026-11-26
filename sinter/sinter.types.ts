@@ -116,3 +116,28 @@ export interface MonthText {
   prev: string;
   next: string;
 }
+
+/**
+ * A command of <alloy-palette>: what it lists and runs. `href`: a link it follows (sinter's navigate()); without one,
+ * picking it emits `pick` for the page. `group` titles it ("Go to", "Actions", a search's kinds).
+ */
+export interface PaletteCommand {
+  id: string;
+  label: string;
+  group?: string;
+  keywords?: string;
+  href?: string;
+  /** shown as keys, e.g. "R" or "Ctrl+K" */
+  shortcut?: string;
+}
+
+/** The words of <alloy-palette>. */
+export interface PaletteText {
+  open: string;
+  placeholder: string;
+  empty: string;
+  recent: string;
+  pages: string;
+  actions: string;
+  results: string;
+}

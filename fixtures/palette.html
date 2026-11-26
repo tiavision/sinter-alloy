@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a command palette</title>
+</head>
+<body>
+  <!-- The page's own commands (its navigation and its buttons with shortcuts), one of the page's (handled by `pick`),
+       and the server's answers to /api/commands?q=. -->
+  <main data-sn-state="{ refreshed: 0, picked: '' }" data-layout="stack" data-gap="md">
+    <nav data-layout="row" data-gap="sm">
+      <a href="/">Overview</a>
+      <a href="/board/">Board</a>
+      <a href="/split/">Split panes</a>
+    </nav>
+    <button type="button" data-shortcut="r" data-sn-on-click="refreshed = refreshed + 1">Refresh mail</button>
+    <output id="refreshed" data-sn-text="refreshed"></output>
+    <output id="picked" data-sn-text="picked"></output>
+    <alloy-palette data-sn-with="{ label: 'Commands', src: '/api/commands', commands: [{ id: 'theme', label: 'Switch theme', keywords: 'dark light' }] }"
+                   data-sn-on-pick="picked = $event.detail.id"></alloy-palette>
+  </main>
+</body>
+</html>

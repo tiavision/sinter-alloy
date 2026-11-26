@@ -40,7 +40,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -51,6 +51,11 @@ beforeAll(async () => {
       const json = (status: number, v: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(v)); };
       if (url.pathname === '/api/tasks' && req.method === 'GET') return json(200, tasks);
       if (url.pathname === '/api/cards' && req.method === 'GET') return json(200, cards);
+      if (url.pathname === '/api/commands') {
+        const q = (url.searchParams.get('q') ?? '').toLowerCase();
+        return json(200, [{ id: 'inv', label: 'Invoice #2405', href: '/split/', group: 'Messages' }, { id: 'team', label: 'Team sync', group: 'Events' }]
+          .filter((c) => c.label.toLowerCase().includes(q)));
+      }
       if (url.pathname.startsWith('/api/')) {
         writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
         if (refuse) return json(500, { error: 'no' });
@@ -402,5 +407,54 @@ test('month: a year of months, keys move and pick', async () => {
   await page.keyboard.press('Enter');
   await expect.poll(() => page.locator('#month-out').textContent()).toBe('2027-01');
   expect(await toggle.textContent()).toBe('January 2027');
+  await check();
+});
+
+// ── command palette ──
+
+test('palette: Ctrl+K opens it with the page\'s own commands; typing ranks; Enter follows a link', async () => {
+  const { page, check } = await open('palette/');
+  await page.keyboard.press('Control+k');
+  const dialog = page.locator('.alloy-palette dialog');
+  await expect.poll(() => dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(true);
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('combobox');
+  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-truncate]', (els) => els.map((e) => e.textContent));
+  expect(await labels()).toEqual(['Switch theme', 'Overview', 'Board', 'Split panes', 'Refresh mail']);
+  await page.keyboard.type('boa');
+  await expect.poll(labels).toEqual(['Board']);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForURL(/\/board\/$/);
+  await check();
+});
+
+test('palette: a page button runs, a page command emits pick, the server\'s answers join, recent first', async () => {
+  const { page, check } = await open('palette/');
+  const dialog = page.locator('.alloy-palette dialog');
+  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-truncate]', (els) => els.map((e) => e.textContent));
+  // the button: its shortcut shown, clicked when picked; the focus goes back
+  await page.locator('.alloy-palette > button').click();
+  await page.keyboard.type('refresh');
+  await expect.poll(labels).toEqual(['Refresh mail']);
+  expect(await page.locator('.alloy-palette [role="option"] kbd').textContent()).toBe('R');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.locator('#refreshed').textContent()).toBe('1');
+  expect(await dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(false);
+  // the server: after a pause, its answers ranked with the rest
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('team');
+  await expect.poll(labels).toEqual(['Team sync']);
+  expect(await page.locator('.alloy-palette [role="option"] .al-group').textContent()).toBe('Events');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.locator('#picked').textContent()).toBe('remote:team');
+  // recent: the last two picks first
+  await page.keyboard.press('Control+k');
+  await expect.poll(async () => (await labels()).slice(0, 2)).toEqual(['Team sync', 'Refresh mail']);
+  expect(await page.locator('.alloy-palette [role="option"] .al-group').first().textContent()).toBe('Recent');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(false);
+  await page.evaluate(() => localStorage.clear());
   await check();
 });
