@@ -129,7 +129,7 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
   });
   page.on('pageerror', (e) => {
     // Chromium: a cross-document view transition (temper's) interrupted by the next navigation rejects its `ready`,
-    // which sinter's transition script leaves unhandled (reported to sinter; remove this once it handles it)
+    // left unhandled somewhere (reported to sinter; still seen with sinter #125, which catches its own `ready`)
     if (e.message.startsWith('Transition was aborted because of invalid state')) return;
     errors.push(`uncaught: ${e.message}${e.stack ? ' @ ' + e.stack.split('\n').slice(0, 3).join(' / ') : ''}`);
   });
