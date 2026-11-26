@@ -1,5 +1,6 @@
 // The script of <alloy-split>: the separator's keys and pointer drags, and the size kept under `name`. It writes only the
 // component's state (`size`, `dragging`); with a bound `value` it only emits `change` and the page writes it back.
+import { capture } from '../pointer.js';
 import { AlloySplitComponent } from './alloy-split.html';
 import { clamp, dragSize, keySize, kept, toggle } from '../split.js';
 
@@ -54,7 +55,7 @@ export class AlloySplit extends AlloySplitComponent {
     if (e.button !== 0) return;
     e.preventDefault();
     const sep = this.refs.separator, column = this.props.direction === 'column';
-    sep.setPointerCapture?.(e.pointerId);
+    capture(sep, e.pointerId);
     sep.focus({ preventScroll: true });
     const start = this.#size(), from = column ? e.clientY : e.clientX, b = this.#bounds(), reverse = !!this.props.reverse;
     let last = start, frame = 0, at = from;

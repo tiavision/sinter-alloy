@@ -40,14 +40,21 @@ the `move` event and send what that API wants (fixtures/manual.html).
 
 ## Install
 
+Not on npm yet: install a commit from GitHub, as a tarball (no git needed, the same in CI and a Docker build):
+
 ```sh
-npm install @tiavision/sinter-alloy
+npm install https://codeload.github.com/tiavision/sinter-alloy/tar.gz/<commit>
 ```
 
 ```js
 // vite.config.js
-sinter({ libraries: ['@tiavision/sinter-alloy'] })
+sinter({ libraries: ['@tiavision/sinter-alloy'] }),
+// one sinter for the app and the library: the components find the page's app through sinter's `instance()`
+resolve: { dedupe: ['@tiaforge-ui/sinter', '@tiaforge-ui/temper'] },
 ```
+
+`dedupe` matters when the library is linked from a checkout (`npm link`, `file:`): its own `node_modules` then holds a
+second sinter, and a self-saving sortable or board would find no app and save nothing.
 
 ```ts
 // src/sinter.helpers.ts
@@ -269,7 +276,8 @@ sinter/
 fixtures/                          pages for `sinter check` and the browser tests
 preview/                           the preview page (`npm run preview:build`), on GitHub Pages
 scripts/screenshots.mjs            the README's screenshots from the preview (`npm run screenshots`)
-test/                              unit tests, `sinter check`, render tests with the real script, Chromium tests
+test/                              unit tests, `sinter check`, render tests with the real script, browser tests
+                                   (Chromium by default; `BROWSER=firefox` or `webkit`; CI runs all three)
 docs/DESIGN.md                     the design of the whole library
 ```
 

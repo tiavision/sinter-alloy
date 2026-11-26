@@ -1,6 +1,7 @@
 // The script of <alloy-sortable>: pointer drags and keyboard moves of its rows. It reads the rows' boxes and
 // writes only the component's state (the lifted row, its offset, the drop line, the live region's text); a drop
 // emits `move` and the page changes the list. The decisions are ../sortable.ts, pure.
+import { capture } from '../pointer.js';
 import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloySortableComponent } from './alloy-sortable.html';
 import { ENGLISH, drop, finalIndex, lift, lineAt, pointAt, step, type Drag } from '../sortable.js';
@@ -181,7 +182,7 @@ export class AlloySortable extends AlloySortableComponent {
     if (key == null || e.button !== 0 || this.#drag) return;
     const handle = asElement(e.target)?.closest<HTMLElement>('.al-handle') ?? null;
     e.preventDefault();
-    handle?.setPointerCapture?.(e.pointerId);
+    capture(handle, e.pointerId);
     const rows = [...this.root.querySelectorAll<HTMLElement>('li[data-al-key]')].map((li) => {
       const r = li.getBoundingClientRect();
       return { top: r.top, height: r.height };

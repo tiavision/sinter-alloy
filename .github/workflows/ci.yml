@@ -1,0 +1,32 @@
+# The tests on every push and pull request, in the three engines: Chromium, Firefox and WebKit (Safari's).
+# Each job runs the whole suite with BROWSER set; the browser tests (test/browser.test.ts) drive that engine.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - if: matrix.browser == 'chromium'
+        run: npm run typecheck && npx sinter check --strict
+      - run: npm test
+        env:
+          BROWSER: ${{ matrix.browser }}

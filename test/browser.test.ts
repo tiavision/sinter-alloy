@@ -8,14 +8,22 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'vite';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
-import { chromium, devices, type Browser, type Page } from 'playwright';
+import { chromium, devices, firefox, webkit, type Browser, type BrowserContextOptions, type Page } from 'playwright';
+
+/** The engine: BROWSER=chromium (default), firefox or webkit (Safari's). CI runs all three. */
+const engine = { chromium, firefox, webkit }[(process.env.BROWSER ?? 'chromium') as 'chromium' | 'firefox' | 'webkit'];
+if (!engine) throw new Error(`BROWSER must be chromium, firefox or webkit, not ${process.env.BROWSER}`);
+/** A phone: touch, a narrow screen (Firefox has no mobile mode, only touch at that size). */
+const phone: BrowserContextOptions = engine === firefox ? (({ isMobile: _, ...rest }) => rest)(devices['Pixel 7']) : devices['Pixel 7'];
 import sinter from '@tiaforge-ui/sinter/vite';
 import temper from '@tiaforge-ui/temper/vite';
 import { app, PKG } from './app.js';
 
 // what a sinter app with temper's icons needs and no more: sinter's Speculation Rules (this app has no swaps) and temper's
 // icons, which are data: SVG masks
-const CSP = "default-src 'self'; script-src 'self' 'inline-speculation-rules'; style-src 'self'; img-src 'self' data:; require-trusted-types-for 'script'";
+// no inline script at all (the app is built without sinter's prefetching, whose speculation rules are inline and need
+// a keyword WebKit does not know)
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; require-trusted-types-for 'script'";
 const a = app();
 const dist = join(a.root, 'dist');
 const START = [{ id: 'a', title: 'Alpha', rank: 0 }, { id: 'b', title: 'Beta', rank: 1 }, { id: 'c', title: 'Gamma', rank: 2 }];
@@ -35,7 +43,7 @@ beforeAll(async () => {
   await build({
     root: a.root, logLevel: 'silent',
     plugins: [
-      sinter({ libraries: ['@tiavision/sinter-alloy'] }),
+      sinter({ libraries: ['@tiavision/sinter-alloy'], prefetch: false }),
       temper({ paths: [join(PKG, 'sinter/components'), a.root], icons: { lucide: true } }),
     ],
     build: {
@@ -95,7 +103,7 @@ beforeAll(async () => {
   });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`;
-  browser = await chromium.launch();
+  browser = await engine.launch();
 }, 180_000);
 afterAll(async () => {
   await browser?.close();
@@ -114,7 +122,11 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
   const ctx = await browser.newContext(options);
   const page = await ctx.newPage();
   const errors: string[] = [];
-  page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('500')) errors.push(m.text()); });
+  page.on('console', (m) => {
+    // Chromium's note when a navigation (a range written to the URL twice in a row) interrupts the last one's view
+    // transition: the page is right, the transition is skipped
+    if (m.type() === 'error' && !m.text().includes('500') && !m.text().startsWith('Transition was aborted because of invalid state')) errors.push(m.text());
+  });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
@@ -131,6 +143,33 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
     await ctx.close();
   } };
 }
+/**
+ * A touch drag through `points` (page coordinates). Chromium gets real touch input (CDP); Firefox and WebKit have no
+ * way to drive a touch drag, so they get the pointer events a touch makes (pointerType 'touch'), sent to the element
+ * the touch starts on, as pointer capture would.
+ */
+async function touchDrag(page: Page, points: Array<{ x: number; y: number }>) {
+  if (engine === chromium) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [points[0]!] });
+    for (const p of points.slice(1)) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [p] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    return;
+  }
+  await page.evaluate(async (points) => {
+    const target = document.elementFromPoint(points[0]!.x, points[0]!.y)!;
+    const send = (type: string, p: { x: number; y: number }) => target.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, composed: true, pointerId: 7, pointerType: 'touch', isPrimary: true,
+      clientX: p.x, clientY: p.y, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1,
+    }));
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    send('pointerdown', points[0]!);
+    for (const p of points.slice(1)) { await frame(); send('pointermove', p); }
+    await frame();
+    send('pointerup', points.at(-1)!);
+  }, points);
+}
+
 const order = (p: Page) => p.$$eval('li[data-al-key]', (rows) => rows.map((r) => r.getAttribute('data-al-key')));
 const handle = (p: Page, name: string) => p.locator(`button.al-handle[aria-label="Move ${name}"]`);
 async function settled(p: Page, want: string[]) {
@@ -145,7 +184,7 @@ test('a mouse drag saves the order itself: the row moves at once, the server get
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   for (let i = 1; i <= 8; i++) await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + (to.y + 3 - from.y - from.height / 2) * i / 8);
-  expect(await page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('a');
+  await expect.poll(() => page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('a');
   await page.mouse.up();
   await settled(page, ['c', 'a', 'b']);
   await expect.poll(() => writes).toEqual([['PUT', '/api/tasks/order', { order: ['c', 'a', 'b'] }]]);
@@ -176,14 +215,11 @@ test('a keyboard move saves too; a refused one goes back with the note', async (
 });
 
 test('a touch drag from the handle moves a row on a phone', async () => {
-  const { page, check } = await open('', devices['Pixel 7']);
+  const { page, check } = await open('', phone);
   const from = (await handle(page, 'Alpha').boundingBox())!;
   const to = (await page.locator('li[data-al-key="c"]').boundingBox())!;
-  const cdp = await page.context().newCDPSession(page);
-  const at = (y: number) => [{ x: from.x + from.width / 2, y }];
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(from.y + from.height / 2) });
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(from.y + from.height / 2 + (to.y + to.height - 3 - from.y - from.height / 2) * i / 8) });
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const x = from.x + from.width / 2, y0 = from.y + from.height / 2, y1 = to.y + to.height - 3;
+  await touchDrag(page, Array.from({ length: 9 }, (_, i) => ({ x, y: y0 + (y1 - y0) * i / 8 })));
   await settled(page, ['b', 'c', 'a']);
   await check();
 });
@@ -220,7 +256,7 @@ test('board: a mouse drag to another column moves the card at once and saves tha
   const target = (await page.locator('li[data-al-key="c"]').boundingBox())!;
   await drag(page, from, target.x + target.width / 2, target.y + 3, async () => {
     expect(await page.locator('li[data-al-lifted="pointer"]').getAttribute('data-al-key')).toBe('a');
-    expect(await page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('c');
+    await expect.poll(() => page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('c');
   });
   await expect.poll(() => board(page)).toEqual({ todo: ['b'], doing: ['a', 'c'], done: [] });
   await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'doing', order: ['a', 'c'] }]]);
@@ -235,7 +271,7 @@ test('board: an empty column is outlined and takes the card', async () => {
   const from = (await handle(page, 'Beta').boundingBox())!;
   const done = (await page.locator('[data-al-group="done"] ul').boundingBox())!;
   await drag(page, from, done.x + done.width / 2, done.y + done.height / 2, async () => {
-    expect(await page.locator('[data-al-group="done"] ul').getAttribute('data-al-line')).toBe('empty');
+    await expect.poll(() => page.locator('[data-al-group="done"] ul').getAttribute('data-al-line')).toBe('empty');
   });
   await expect.poll(() => board(page)).toEqual({ todo: ['a'], doing: ['c'], done: ['b'] });
   await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'done', order: ['b'] }]]);
@@ -307,13 +343,10 @@ test('split: keys, a reversed split bound to the page\'s state, a column split',
 });
 
 test('split: a touch drag on the separator', async () => {
-  const { page, check } = await open('split/', devices['Pixel 7']);
+  const { page, check } = await open('split/', phone);
   const s = await box(page, '#own [role="separator"]');
-  const cdp = await page.context().newCDPSession(page);
-  const at = (x: number) => [{ x, y: s.y + s.height / 2 }];
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(s.x + s.width / 2) });
-  for (let i = 1; i <= 5; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(s.x + s.width / 2 + 40 * i / 5) });
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const x0 = s.x + s.width / 2, y = s.y + s.height / 2;
+  await touchDrag(page, Array.from({ length: 6 }, (_, i) => ({ x: x0 + 40 * i / 5, y })));
   await expect.poll(() => page.locator('#own [role="separator"]').getAttribute('aria-valuenow')).toBe('240');
   await check();
 });
@@ -322,7 +355,7 @@ test('split under style-src \'self\' alone: the first frame\'s size attribute is
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const violations: string[] = [];
-  page.on('console', (m) => { if (m.type() === 'error' && !/Content Security Policy/.test(m.text())) violations.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/Content[- ]Security[- ]Policy/.test(m.text())) violations.push(m.text()); });
   await page.goto(base + 'split/?strict');
   await page.waitForLoadState('networkidle');
   await expect.poll(async () => Math.round((await page.locator('#folders').boundingBox())!.width)).toBe(200);
@@ -440,9 +473,9 @@ test('palette: Ctrl+K opens it with the page\'s own commands; typing ranks; Ente
   await page.keyboard.press('Control+k');
   const dialog = page.locator('.alloy-palette dialog');
   await expect.poll(() => dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(true);
-  expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('combobox');
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('combobox');
   const labels = () => page.$$eval('.alloy-palette [role="option"] [data-truncate]', (els) => els.map((e) => e.textContent));
-  expect(await labels()).toEqual(['Switch theme', 'Overview', 'Board', 'Split panes', 'Refresh mail']);
+  await expect.poll(labels).toEqual(['Switch theme', 'Overview', 'Board', 'Split panes', 'Refresh mail']);
   await page.keyboard.type('boa');
   await expect.poll(labels).toEqual(['Board']);
   await page.keyboard.press('ArrowDown');

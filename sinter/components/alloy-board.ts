@@ -1,6 +1,7 @@
 // The script of <alloy-board>: pointer drags and keyboard moves of its cards, within a column and between columns. It
 // reads the boxes and writes only the component's state; a drop emits `move` (cancelable) and, with `resource` and
 // `save`, saves it through the page's store. The decisions are ../board.ts, the request ../order.ts and ../save.ts.
+import { capture } from '../pointer.js';
 import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloyBoardComponent } from './alloy-board.html';
 import { BOARD_ENGLISH, cardIndex, cardLine, columnTotal, crossCard, dropCard, liftCard, placeAt, stepCard, type BoardDrag, type Column } from '../board.js';
@@ -193,7 +194,7 @@ export class AlloyBoard extends AlloyBoardComponent {
     if (key == null || e.button !== 0 || this.#drag) return;
     const handle = asElement(e.target)?.closest<HTMLElement>('.al-handle') ?? null;
     e.preventDefault();
-    handle?.setPointerCapture?.(e.pointerId);
+    capture(handle, e.pointerId);
     const strip = this.root.querySelector('.al-columns') ?? this.root;
     const scroller = scrollParent(this.root);
     this.#pointer = {

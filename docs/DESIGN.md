@@ -2,7 +2,9 @@
 
 Status: every component is built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form),
 `<alloy-board>`, `<alloy-split>`, `<alloy-date>`/`<alloy-range>`/`<alloy-month>`, `<alloy-palette>`, `<alloy-virtual>`.
-The open questions below were answered with the recommendations, marked *provisional* where they are not settled. A preview page (`preview/`, published at https://tiavision.github.io/sinter-alloy/)
+The open questions below were answered with the recommendations, marked *provisional* where they are not settled.
+The browser tests below, written as "Chromium", run in Chromium, Firefox and WebKit (CI, `BROWSER=`); Firefox and
+WebKit cannot drive a touch drag, so there the touch tests send the pointer events a touch makes. A preview page (`preview/`, published at https://tiavision.github.io/sinter-alloy/)
 shows them all live. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
 the component it belongs to is built.
 
