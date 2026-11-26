@@ -6,7 +6,7 @@ import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloyBoardComponent } from './alloy-board.html';
 import { BOARD_ENGLISH, cardIndex, cardLine, columnTotal, crossCard, dropCard, liftCard, placeAt, stepCard, type BoardDrag, type Column } from '../board.js';
 import { columnAfter, rankIn } from '../order.js';
-import { savedFields, saveTarget } from '../save.js';
+import { savedFields, saveTarget, type Handle } from '../save.js';
 import type { BoardMove, BoardText, Move } from '../sinter.types.js';
 
 const EDGE = 40, SPEED = 14;
@@ -150,7 +150,8 @@ export class AlloyBoard extends AlloyBoardComponent {
     const app = mounted(this.root);
     if (!app) return;
     const res = app.resource(resource);
-    const target = saveTarget(res, this.props, location.href);
+    // sinter 0.23's handle has `src` and `order`; 0.22's has neither (its type too)
+    const target = saveTarget(res as unknown as Handle, this.props, location.href);
     if (!target) return;
     const { url, field, descending } = target;
     const list = res.value() as readonly Record<string, unknown>[];

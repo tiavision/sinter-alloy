@@ -5,7 +5,7 @@ import { capture } from '../pointer.js';
 import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloySortableComponent } from './alloy-sortable.html';
 import { ENGLISH, drop, finalIndex, lift, lineAt, pointAt, step, type Drag } from '../sortable.js';
-import { saved, saveOrder, saveTarget } from '../save.js';
+import { saved, saveOrder, saveTarget, type Handle } from '../save.js';
 import type { Move, SortableText } from '../sinter.types.js';
 
 /** how close to a scrolling box's edge (px) the pointer scrolls it, and how fast at the edge (px per frame) */
@@ -142,7 +142,8 @@ export class AlloySortable extends AlloySortableComponent {
     const app = mounted(this.root);
     if (!app) return;
     const res = app.resource(resource);
-    const target = saveTarget(res, this.props, location.href);
+    // sinter 0.23's handle has `src` and `order`; 0.22's has neither (its type too)
+    const target = saveTarget(res as unknown as Handle, this.props, location.href);
     if (!target) return;
     const { url, field, descending } = target;
     const order = saveOrder(res.value() as readonly object[], move, (x) => res.keyOf(x), field, descending);

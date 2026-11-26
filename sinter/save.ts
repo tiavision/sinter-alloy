@@ -19,7 +19,10 @@ export function saveOrder<T extends object>(list: readonly T[], move: Move, keyO
  * `/order` added to its path, its query kept); the field is `field`, else the resource's `order` (`-rank` is `rank`,
  * sorted descending), else `sort_order`. No URL (an older sinter, a resource without `src`) is null: nothing is saved.
  */
-export function saveTarget(handle: { src?: string | null; order?: string | null }, props: { save?: string; field?: string }, base: string):
+/** What saveTarget reads of a resource's handle. */
+export type Handle = { src?: string | null; order?: string | null };
+
+export function saveTarget(handle: Handle, props: { save?: string; field?: string }, base: string):
   { url: string; field: string; descending: boolean } | null {
   const order = handle.order?.trim() || '';
   const descending = order.startsWith('-');
