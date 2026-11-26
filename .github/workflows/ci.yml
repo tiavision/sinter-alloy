@@ -1,22 +1,22 @@
-# The tests on every push and pull request, in the three engines: Chromium, Firefox and WebKit (Safari's).
-# Each job runs the whole suite with BROWSER set; the browser tests (test/browser.test.ts) drive that engine.
+# Throwaway (branch webkit-url-check): the range test in WebKit, eight times, with sinter's fix (vendored tarball)
+# and with released sinter, for the intermittent `$url` failure seen only on CI.
 name: CI
 
 on:
   push:
-  pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: test (${{ matrix.browser }})
+  range:
+    name: range (${{ matrix.sinter }}, ${{ matrix.run }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        sinter: [fix, released]
+        run: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,9 +24,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - if: matrix.browser == 'chromium'
-        run: npm run typecheck
-      - run: npm test
+      - if: matrix.sinter == 'released'
+        run: npm install --no-save @tiaforge-ui/sinter@0.22.1
+      - run: npx playwright install --with-deps webkit
+      - run: npx vitest run test/browser.test.ts -t "range:" --silent=false
         env:
-          BROWSER: ${{ matrix.browser }}
+          BROWSER: webkit
+          RANGE_DEBUG: '1'
