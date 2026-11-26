@@ -4,8 +4,18 @@ Opinionated components for [sinter](https://github.com/tiaforge/sinter): the par
 because it cannot be written as attributes. Built for [temper](https://github.com/tiaforge/temper) (a required peer),
 first used by [caley](https://github.com/tiavision/caley).
 
-Today: **`<alloy-sortable>`**, a list the user reorders with a pointer (mouse, touch, pen) or the keyboard. Planned
-(see [docs/DESIGN.md](docs/DESIGN.md)): boards, date and range pickers, a command palette, long lists, split panes.
+| Component | Status |
+| --- | --- |
+| [`<alloy-sortable>`](#alloy-sortable) | built: a list reordered with a pointer (mouse, touch, pen) or the keyboard |
+| [`<alloy-board>`](#alloy-board) | built: cards moved within and between columns |
+| [`<alloy-split>`](#planned) | designed: two panes and a separator that keeps its size |
+| [`<alloy-date>`, `<alloy-range>`, `<alloy-month>`](#planned) | designed: dates in the page's language, a range in the URL |
+| [`<alloy-palette>`](#planned) | designed: a Ctrl+K command palette |
+| [`<alloy-virtual>`](#planned) | designed: a long list over sinter's `append` pagination |
+
+**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): the two
+built components live, and mockups of the designed ones. Its source is `preview/` (`npm run preview:build`). The
+design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN.md).
 
 ```html
 <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
@@ -74,17 +84,74 @@ shows where it drops, the nearest scrolling box scrolls near its edges, Escape c
 Helpers: `alloy.reorder(list, move)`, `alloy.keysAfter(list, move, keyOf)`, `alloy.between(list, move, field)` (the
 sort value that puts the item between its new neighbours), `alloy.moved(list, move, keyOf)`.
 
+## `<alloy-board>`
+
+```html
+<sn-resource name="cards" src="/api/cards" key="id" order="rank" type="Card[]"></sn-resource>
+
+<alloy-board data-sn-with="{ lists: [{ id: 'todo', title: 'To do' }, { id: 'done', title: 'Done' }],
+                             listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
+                             nameOf: (c) => c.title, group: 'status', label: 'Tasks',
+                             resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+  <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+</alloy-board>
+```
+
+One list of cards; each card's `group` field (`status`) names its column, `field` (`rank`) orders a column. A drop
+moves the card at once (an optimistic merge of its group and rank) and saves the column it landed in:
+
+```
+PUT /api/cards/order      { "group": "done", "order": ["b", "a"] }      → any 2xx (an answer holding cards is applied by key)
+```
+
+The server sets the card's group and renumbers that column. A refused save puts the card back with a note. Without
+`resource` and `save`, a drop emits `move` (a `BoardMove`: `fromGroup`, `toGroup` besides the sortable's fields) and
+the page applies it; for cards kept in state, `alloy.regroup(cards, $event.detail, (c) => c.id, 'status')`.
+
+| | |
+| --- | --- |
+| `lists`, `listKey`, `listName` | the columns in order, a column's key (the value of the cards' `group`), its name |
+| `items`, `keyOf`, `nameOf`, `group`, `field` | the cards, their key and name, the field naming their column, the sort field |
+| `label`, `disabled`, `text` | the board's accessible name; no handles; the words (`BoardText`) |
+| `resource`, `save` | the round trip above (interim, as the sortable's) |
+| slot `item` | a card: `$slot.item`, `$slot.index`, `$slot.list` |
+| slot `list` | a column's header: `$slot.list`, `$slot.count` (default: its name and a count badge) |
+| events | `move` (`BoardMove`, cancelable), `sort-error` (`{ move, error }`) |
+
+Keyboard: Space or Enter on a card's handle picks it up, ArrowUp/ArrowDown/Home/End move it in its column,
+ArrowLeft/ArrowRight to the neighbouring column, Space or Enter drops, Escape puts it back; each step is announced
+with the column's name. Pointer: the card follows the pointer across columns, a line shows the place, an empty column
+is outlined, the board scrolls sideways near its edges. Helpers: `alloy.columnAfter`, `alloy.rankIn`, `alloy.regroup`.
+
+## Planned
+
+Designed in [docs/DESIGN.md](docs/DESIGN.md), not built yet; the preview shows a mockup of each. Each assumes one shape,
+as the sortable does, so a page writes the tag and nothing else.
+
+- **`<alloy-split>`**: two panes (slots `start`, `end`) and a separator between them that keeps its size itself
+  (persisted under `name`): pointer drag, arrow keys, Enter to collapse. Would replace caley's `<email-split>`.
+- **`<alloy-date>`, `<alloy-range>`, `<alloy-month>`**: a date field with a calendar popover, a range bound to two URL
+  parameters (`params: ['start', 'end']`, ISO dates), a month picker; weekday names and the week's first day from the
+  page's language, whatever the browser's.
+- **`<alloy-palette>`**: opens with Ctrl+K; lists the page's own links and shortcut buttons with no setup, and asks
+  `GET <src>?q=` for more (`[{ id, label, href, group }]`).
+- **`<alloy-virtual>`**: renders only the rows in view of a resource paginated with sinter's `append` mode, and loads
+  the next page near the end. temper's `data-lazy` is the first choice before it.
+
 ## The package
 
 ```
 sinter/
   components/alloy-sortable.html   markup, contract, scoped styles (tokens only)
   components/alloy-sortable.ts     the script: pointer and keyboard, writes only its state
+  components/alloy-board.html/.ts  the board, the same way
+  board.ts                         the board's state machine, pure
   sortable.ts                      the state machine, pure
   save.ts                          the round trip's body and answer, pure
   order.ts                         the helpers, pure
   sinter.helpers.ts, sinter.types.ts, index.ts
-fixtures/                          pages for `sinter check`
+fixtures/                          pages for `sinter check` and the browser tests
+preview/                           the preview page (`npm run preview:build`)
 test/                              unit tests, `sinter check`, render tests with the real script, Chromium tests
 docs/DESIGN.md                     the design of the whole library
 ```

@@ -1,7 +1,8 @@
 # sinter-alloy: design
 
-Status: draft. Phase 1 (this document) and the phase 2 spike (`<alloy-sortable>`, built, tested, used in caley's
-mail sidebar) are done. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
+Status: draft. Built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form) and `<alloy-board>`.
+Designed: the rest. A preview page (`preview/`, published at https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)
+shows the two built ones live and mockups of the designed ones. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
 the component it belongs to is built.
 
 ## What sinter-alloy is
@@ -213,34 +214,43 @@ viewport with the sidebar as a drawer, and no console error or CSP violation (CS
 accounts and calendars (`caldav_accounts.sort_order`; calendars would need a column), identities (the compose
 "From" order and default). Each needs only an order endpoint like the folders' one.
 
-### `<alloy-board>` (designed)
-
-Several lists, items moved within and between them: a kanban board, and in caley, the calendar (an event dragged to
-another day; the week view's columns are lists, the month grid's cells too) and messages dropped on a mailbox.
+### `<alloy-board>` (built)
 
 ```html
-<alloy-board data-sn-with="{ lists: columns, items: cards, keyOf: (c) => c.id, nameOf: (c) => c.title, label: 'Board',
-                             resource: 'cards', group: 'status', field: 'rank', save: '/api/cards/order' }">
-  <h2 slot="list-header" data-sn-text="$slot.list.title"></h2>
+<alloy-board data-sn-with="{ lists: columns, listKey: (c) => c.id, listName: (c) => c.title, items: cards,
+                             keyOf: (c) => c.id, nameOf: (c) => c.title, group: 'status', label: 'Board',
+                             resource: 'cards', field: 'rank', save: '/api/cards/order' }">
   <article slot="item" data-sn-text="$slot.item.title"></article>
 </alloy-board>
 ```
 
-- Assumed shape, the sortable's for one column: `PUT <save> { group: 'done', order: [every key of that column, in
-  order] }`; the server sets the moved card's group and renumbers that column. Still one idempotent request.
-- One resource of items with a group field (`status`) and a sort field: a move between columns is still one `merge`
-  (both fields), so the same rollback and sync apply. `BoardMove` extends `Move` with `fromGroup`, `toGroup`;
-  cancelable, as the sortable's.
-- Keyboard: as the sortable, plus ArrowLeft/ArrowRight move to the neighbouring list (at the nearest index), and
-  announcements name the list ("Moved to Done, position 2 of 4").
-- Lists as drop targets only (no reordering of lists) in v1 (**Q-B1**).
-- The calendar is a board whose lists are days and whose "index" is a time: a `placeOf` prop that maps a pointer
-  position to a slot (`{ list: day, at: minutes }`) instead of an index, so one component serves kanban and the week
-  grid (**Q-B2**).
-- Message → mailbox: the mailbox rows are drop targets only (`targets` prop, no items of their own). This replaces
-  caley's native drag and drop and gains touch and a keyboard path.
-- Same styling needs as the sortable plus a column surface (temper's `article` or `data-list`).
-- Cost estimate: 3–4 kB gzip (the sortable's machine generalised to 2D hit testing).
+Several columns, cards moved within and between them: a kanban board, and in caley later the calendar (an event to
+another day) and messages dropped on a mailbox.
+
+- One resource of cards with a group field (`status`) and a sort field: a move between columns is still one `merge`
+  (both fields), so the same rollback and sync apply. The markup renders each column as a `data-sn-for` over
+  `items.filter((x) => x[group] === listKey(l))`.
+- Assumed shape, the sortable's for one column: `PUT <save> { group, order }`, `order` every key of the target column
+  in its new order; the server sets the card's group and renumbers that column. Still one idempotent request. An
+  answer holding cards has their group and sort field applied by key.
+- `BoardMove` extends `Move` with `fromGroup` and `toGroup` (`from` in the old column, `to` in the new one, counted
+  without the card); cancelable, as the sortable's. Helpers for pages that apply it themselves: `columnAfter` (the
+  target column's order), `rankIn` (the card's new sort value there), `regroup` (cards kept in state).
+- Keyboard: as the sortable, plus ArrowLeft/ArrowRight move to the neighbouring column at the same index (or its end),
+  and announcements name the column ("Beta: Doing, position 2 of 2"). Pointer: the column under the pointer (else the
+  nearest), the place by the rows' middles; the card follows the pointer (`translate` from state); an empty column is
+  outlined as the target; the board scrolls sideways and the page vertically near the edges.
+- Columns are drop targets only (no reordering of columns, **Q-B1**). The calendar's time grid (a place that is a time,
+  not an index) is not covered: a `placeOf` prop or a separate `alloy-schedule` (**Q-B2**). Message → mailbox drops
+  (targets without cards) are not covered yet either.
+- Styling: temper attributes (`data-layout`, `data-scroll`, `data-caption`, `data-badge`, the ghost handle); scoped
+  CSS with tokens for the column surface (`--tm-fill`), the card (`--tm-surface`, `--tm-border`), the lifted card, the
+  drop line and the empty column's outline (T1–T3, plus a column surface).
+- Cost: **3.6 kB gzip** for the script with its state machine and the save (the sortable: 2.9 kB with its save).
+- Tests: the state machine (within and across columns, ends, empty columns, the line, hit testing), the helpers, render
+  tests with the real script (keyboard across columns with the announcements, the request body, the answer, a refused
+  save, cards in state with custom headers) and Chromium (a drag to another column with the line and the saved state
+  after a reload, a drag into an empty column, keyboard over state; strict CSP, no errors).
 
 ## 2. Split panes: `<alloy-split>`
 

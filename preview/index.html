@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <title>sinter-alloy</title>
+  <script type="module" src="./src/main.ts"></script>
+</head>
+<body>
+  <!-- The library's preview: alloy-sortable and alloy-board running over this page's state (no server: each move is
+       applied with alloy.reorder / alloy.regroup, and the request a self-saving use would send is shown under it), and
+       mockups of the designed components, drawn with the temper attributes they would use. -->
+  <main class="page" data-layout="stack" data-gap="xl"
+        data-sn-state="{
+          folders: [
+            { id: 'f1', name: 'Follow-up', unread: 3 },
+            { id: 'f2', name: 'Receipts', unread: 0 },
+            { id: 'f3', name: 'Travel', unread: 1 },
+            { id: 'f4', name: 'Newsletters', unread: 12 },
+            { id: 'f5', name: 'Family', unread: 0 },
+          ],
+          lastFolder: /** @type {Move|null} */ (null),
+          cards: [
+            { id: 'c1', title: 'Order endpoint for accounts', status: 'todo', tag: 'backend' },
+            { id: 'c2', title: 'Split panes: keyboard model', status: 'todo', tag: 'design' },
+            { id: 'c3', title: 'Board: touch drag', status: 'doing', tag: 'alloy' },
+            { id: 'c4', title: 'German texts', status: 'doing', tag: 'i18n' },
+            { id: 'c5', title: 'Sortable: self-saving mode', status: 'done', tag: 'alloy' },
+            { id: 'c6', title: 'Chromium tests', status: 'done', tag: 'tests' },
+          ],
+          lastCard: /** @type {BoardMove|null} */ (null),
+        }">
+    <header data-layout="stack" data-gap="sm">
+      <span data-caption>@tiavision/sinter-alloy · 0.1.0</span>
+      <h1>sinter-alloy</h1>
+      <p class="lede">Opinionated sinter components for what attributes cannot do. Two are built and run live below:
+        drag a row or card by its handle, or focus a handle and use Space and the arrow keys. The others are designed;
+        their mockups use the temper attributes they would be built from.</p>
+      <div data-layout="row" data-gap="xs">
+        <span data-badge data-tone="success">2 built</span>
+        <span data-badge data-tone="neutral">5 designed</span>
+      </div>
+    </header>
+
+    <!-- ── Sortable ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-sortable">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-sortable">Sortable list</h2>
+        <span data-badge data-tone="success">Built</span>
+        <code>&lt;alloy-sortable&gt;</code>
+      </div>
+      <p class="lede">Reorder with a mouse, touch or the keyboard. The row moves at once; a self-saving use then sends the
+        whole order in one request, and a refused one puts the row back.</p>
+      <div data-layout="grid" data-gap="lg" data-align="start" style="--tm-min: 18rem">
+        <article class="demo" data-layout="stack" data-gap="sm">
+          <span data-caption>Virtual folders</span>
+          <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.id, nameOf: (f) => f.name, label: 'Virtual folders' }"
+                          data-sn-on-move="folders = alloy.reorder(folders, $event.detail); lastFolder = $event.detail">
+            <div slot="item" class="folder-row" data-layout="row" data-gap="sm" data-align="center" data-wrap="none" data-grow>
+              <span data-icon="layers" aria-hidden="true"></span>
+              <span data-truncate data-grow data-sn-text="$slot.item.name"></span>
+              <template data-sn-if="$slot.item.unread > 0"><span data-badge data-tone="accent" data-sn-text="$slot.item.unread"></span></template>
+            </div>
+          </alloy-sortable>
+        </article>
+        <div class="demo" data-layout="stack" data-gap="sm">
+          <span data-caption>What a self-saving use sends</span>
+          <pre class="code" data-sn-text="lastFolder ? 'PUT /api/email/folders/order\n' + JSON.stringify({ order: folders.map((f) => f.id) }, null, 1) : 'Move a folder to see the request.'"></pre>
+          <span data-caption>The move event</span>
+          <pre class="code" data-sn-text="lastFolder ? JSON.stringify(lastFolder, null, 1) : '—'"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Board ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-board">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-board">Board</h2>
+        <span data-badge data-tone="success">Built</span>
+        <code>&lt;alloy-board&gt;</code>
+      </div>
+      <p class="lede">Cards move within a column and between columns; Left and Right move a picked-up card to the
+        neighbouring column. A self-saving use sends the target column's order with the card's new group.</p>
+      <alloy-board data-sn-with="{ lists: [{ id: 'todo', title: 'To do' }, { id: 'doing', title: 'Doing' }, { id: 'done', title: 'Done' }],
+                                   listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
+                                   nameOf: (c) => c.title, group: 'status', label: 'Release plan' }"
+                   data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status'); lastCard = $event.detail">
+        <div slot="item" data-layout="stack" data-gap="xs" data-grow>
+          <span data-sn-text="$slot.item.title"></span>
+          <span data-caption data-sn-text="$slot.item.tag"></span>
+        </div>
+      </alloy-board>
+      <pre class="code" data-sn-text="lastCard ? 'PUT /api/cards/order\n' + JSON.stringify({ group: lastCard.toGroup, order: cards.filter((c) => c.status === lastCard?.toGroup).map((c) => c.id) }) : 'Move a card to see the request.'"></pre>
+    </section>
+
+    <!-- ── Split panes (mockup) ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-split">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-split">Split panes</h2>
+        <span data-badge data-tone="neutral">Designed</span>
+        <code>&lt;alloy-split&gt;</code>
+      </div>
+      <p class="lede">Owns its two panes and keeps their size itself. Drag the separator, or focus it and use the arrow
+        keys; Enter collapses the first pane. Mockup: the separator does not move here.</p>
+      <div class="split" aria-label="Mockup of split panes">
+        <nav data-layout="stack" data-gap="xs" data-pad="sm">
+          <span data-caption>Folders</span>
+          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="inbox" aria-current="true">Inbox</button>
+          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="send">Sent</button>
+          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="archive">Archive</button>
+        </nav>
+        <div class="shown" role="separator" tabindex="0" aria-orientation="vertical" aria-valuenow="176" aria-valuemin="140" aria-valuemax="400" aria-label="Folders width"></div>
+        <div data-layout="stack" data-gap="xs" data-pad="sm">
+          <strong>Sprint 24 notes</strong>
+          <span data-muted>Alice Brennan · Nov 25</span>
+          <p>The second pane takes the rest of the width.</p>
+        </div>
+      </div>
+      <pre class="code">&lt;alloy-split data-sn-with="{ name: 'mail-sidebar', min: 140, max: 400, initial: 220, label: 'Folders width' }"&gt;
+  &lt;nav slot="start"&gt;…&lt;/nav&gt;  &lt;section slot="end"&gt;…&lt;/section&gt;
+&lt;/alloy-split&gt;</pre>
+    </section>
+
+    <!-- ── Date range (mockup) ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-range">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-range">Date and range pickers</h2>
+        <span data-badge data-tone="neutral">Designed</span>
+        <code>&lt;alloy-range&gt;</code>
+      </div>
+      <p class="lede">Dates in the page's language, whatever the browser's. A range binds straight to two URL parameters
+        as ISO dates. Mockup: a search from 10 to 16 November, in German.</p>
+      <div data-layout="row" data-gap="lg" data-align="start">
+        <div data-layout="stack" data-gap="sm">
+          <div data-layout="row" data-gap="xs" data-wrap="none">
+            <label data-layout="stack" data-gap="none"><span data-caption>Von</span><input id="range-from" value="10.11.2026" size="10" readonly></label>
+            <label data-layout="stack" data-gap="none"><span data-caption>Bis</span><input id="range-to" value="16.11.2026" size="10" readonly></label>
+          </div>
+          <div data-layout="row" data-gap="xs">
+            <button type="button" data-variant="outline" data-size="sm">Letzte 7 Tage</button>
+            <button type="button" data-variant="outline" data-size="sm">Dieser Monat</button>
+          </div>
+        </div>
+        <article data-layout="stack" data-gap="sm" aria-label="Mockup of the calendar popover">
+          <div data-layout="row" data-gap="xs" data-align="center" data-wrap="none">
+            <button type="button" data-variant="ghost" data-size="sm" data-icon="chevron-left" aria-label="Voriger Monat"></button>
+            <strong data-grow>November 2026</strong>
+            <button type="button" data-variant="ghost" data-size="sm" data-icon="chevron-right" aria-label="Nächster Monat"></button>
+          </div>
+          <div class="days" role="presentation">
+            <span class="dow">Mo</span><span class="dow">Di</span><span class="dow">Mi</span><span class="dow">Do</span><span class="dow">Fr</span><span class="dow">Sa</span><span class="dow">So</span>
+            <span class="muted">26</span><span class="muted">27</span><span class="muted">28</span><span class="muted">29</span><span class="muted">30</span><span class="muted">31</span><span>1</span>
+            <span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+            <span>9</span><span class="edge">10</span><span class="in">11</span><span class="in">12</span><span class="in">13</span><span class="in">14</span><span class="in">15</span>
+            <span class="edge">16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span>
+            <span>23</span><span>24</span><span>25</span><span class="today">26</span><span>27</span><span>28</span><span>29</span>
+            <span>30</span><span class="muted">1</span><span class="muted">2</span><span class="muted">3</span><span class="muted">4</span><span class="muted">5</span><span class="muted">6</span>
+          </div>
+        </article>
+      </div>
+      <pre class="code">&lt;alloy-range data-sn-with="{ params: ['start', 'end'], label: 'Zeitraum' }"&gt;&lt;/alloy-range&gt;
+→ ?start=2026-11-10&amp;end=2026-11-16</pre>
+    </section>
+
+    <!-- ── Command palette (mockup) ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-palette">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-palette">Command palette</h2>
+        <span data-badge data-tone="neutral">Designed</span>
+        <code>&lt;alloy-palette&gt;</code>
+      </div>
+      <p class="lede">Opens with <kbd>Ctrl</kbd> <kbd>K</kbd>. It lists the page's own links and shortcut buttons with no
+        setup, and asks the server for more as you type. Mockup: “rec” typed in caley.</p>
+      <div class="palette" data-layout="stack" data-gap="sm" data-pad="sm" aria-label="Mockup of the command palette">
+        <div data-field>
+          <span data-icon="search" aria-hidden="true"></span>
+          <input id="palette-q" value="rec" aria-label="Search commands" readonly>
+        </div>
+        <div data-layout="stack" data-gap="xs">
+          <span data-caption>Go to</span>
+          <div data-marked data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-icon="layers" aria-hidden="true"></span><span data-grow>Receipts</span><span data-muted>Virtual folder</span></div>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-icon="calendar" aria-hidden="true"></span><span data-grow>Recurring: Team sync</span><span data-muted>Event</span></div>
+          <span data-caption>Actions</span>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-icon="refresh-cw" aria-hidden="true"></span><span data-grow>Refresh mail</span><kbd>R</kbd></div>
+        </div>
+      </div>
+      <pre class="code">&lt;alloy-palette data-sn-with="{ src: '/api/search/commands', label: 'Commands' }"&gt;&lt;/alloy-palette&gt;
+GET /api/search/commands?q=rec → [{ "id", "label", "href", "group" }]</pre>
+    </section>
+
+    <!-- ── Virtual list (mockup) ── -->
+    <section data-layout="stack" data-gap="md" aria-labelledby="h-virtual">
+      <div data-layout="row" data-gap="sm" data-align="center">
+        <h2 id="h-virtual">Long list</h2>
+        <span data-badge data-tone="neutral">Designed</span>
+        <code>&lt;alloy-virtual&gt;</code>
+      </div>
+      <p class="lede">Renders only the rows in view of a resource paginated with sinter's <code>append</code> mode, and
+        loads the next page near the end. Mockup: 2,340 contacts, 100 loaded, 6 rendered.</p>
+      <div class="window" data-layout="stack" data-gap="xs" aria-label="Mockup of a virtualized list">
+        <div class="spacer">rows 1–41 not rendered (spacer)</div>
+        <div data-list>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-avatar data-size="sm">MA</span><span data-grow>Maria Alonso</span><span data-muted>42 of 2,340</span></div>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-avatar data-size="sm">MB</span><span data-grow>Mark Becker</span><span data-muted>43</span></div>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-avatar data-size="sm">MC</span><span data-grow>Mei Chen</span><span data-muted>44</span></div>
+          <div data-layout="row" data-gap="sm" data-align="center" data-pad="xs"><span data-avatar data-size="sm">MD</span><span data-grow>Milan Dvořák</span><span data-muted>45</span></div>
+        </div>
+        <div class="spacer">rows 46–100 not rendered · rows 101–2,340 not loaded</div>
+      </div>
+      <pre class="code">&lt;sn-resource name="contacts" src="/contacts" paginate="{ append: { after: $item.id }, size: 100 }"&gt;&lt;/sn-resource&gt;
+&lt;alloy-virtual data-sn-with="{ items: contacts, keyOf: (c) =&gt; c.id, estimate: 48, resource: 'contacts' }"&gt;…&lt;/alloy-virtual&gt;</pre>
+    </section>
+
+    <footer data-muted>Design, open questions and what sinter and temper would need: docs/DESIGN.md in tiavision/sinter-alloy.</footer>
+  </main>
+</body>
+</html>
