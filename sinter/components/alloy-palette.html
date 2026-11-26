@@ -29,10 +29,10 @@
       <div data-tm-layout="stack" data-tm-gap="sm">
         <div data-tm-field>
           <span data-tm-icon="search" aria-hidden="true"></span>
-          <input type="text" autocomplete="off" spellcheck="false" data-sn-ref="field" data-sn-options="alloy-palette-list"
+          <input type="text" autocomplete="off" spellcheck="false" data-sn-ref="field" data-sn-options=""
                  data-sn-model="q" data-sn-attr="{ 'aria-label': label, placeholder: text?.placeholder ?? 'Type a command or search' }">
         </div>
-        <ul id="alloy-palette-list" role="listbox" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label, 'aria-busy': loading ? 'true' : null }">
+        <ul role="listbox" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label, 'aria-busy': loading ? 'true' : null }">
           <template data-sn-for="(r, i) in results" data-sn-key="r.id">
             <li role="option" data-tm-layout="row" data-tm-gap="sm" data-tm-align="center" data-tm-wrap="none" data-tm-pad="xs"
                 data-sn-on-click="emit('pick', r)">

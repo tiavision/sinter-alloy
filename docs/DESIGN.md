@@ -423,8 +423,8 @@ dialog: the palette uses them, with a query as the fallback for 0.22), S15 (`$lo
 calendar's own `lang` fallback stays for 0.22), one copy of sinter for a linked library (caley's `resolve.dedupe`
 becomes unneeded), `$event` in `data-sn-optimistic` and actions on a component's tag (a page-wired sortable needs no
 state and hidden `run()` target), the CSP note on first-frame `style` attributes (S12, docs). Still open, asked of
-sinter: S13 (ids per use: the pickers' script-opened popovers, the palette once per page), S9 (a resource handle as
-a prop: `resource: 'folders'` stays), S6, S3. Found on the way: sinter linked into an app (`npm link`) breaks its
+sinter (its verdicts: later, each needing a design first): S13 (ids per use: the pickers open their popovers from script, which is correct as it is; the palette's field finds its list with an empty `data-sn-options`, so it works more than once per page, without `aria-controls`), S9 (a resource handle as
+a prop: `resource: 'folders'` stays), S6; S3 needs a reduced repro from caley. Found on the way: sinter linked into an app (`npm link`) breaks its
 own plugin, and it cannot be installed from a git commit (no `prepare`), so unreleased sinter is tested from a packed
 tarball.
 
