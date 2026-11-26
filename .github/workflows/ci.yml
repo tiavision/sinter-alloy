@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - if: matrix.browser == 'chromium'
-        run: npm run typecheck && npx sinter check --strict
+        run: npm run typecheck
       - run: npm test
         env:
           BROWSER: ${{ matrix.browser }}

@@ -386,11 +386,10 @@ test('date: the value in the page\'s language, the calendar under the field, key
   await expect.poll(() => pop.evaluate((el) => el.matches(':popover-open'))).toBe(true);
   expect(await toggle.getAttribute('aria-expanded')).toBe('true');
   // under the field, starting where it starts (not under the button at its end), once it has finished opening (temper
-  // scales it in, which moves its box meanwhile)
-  await pop.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-  const f = (await page.locator('#date [data-field]').boundingBox())!, b = (await pop.boundingBox())!;
-  expect(b.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
-  expect(Math.abs(b.x - f.x)).toBeLessThan(1);
+  // scales it in, which moves its box meanwhile; on a slow machine the transition may not have started yet)
+  const f = (await page.locator('#date [data-field]').boundingBox())!;
+  await expect.poll(async () => Math.abs((await pop.boundingBox())!.x - f.x)).toBeLessThan(1);
+  expect((await pop.boundingBox())!.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
   // the value's day has the focus; a Sunday-first American week; marks and today
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-10');
   expect(await page.locator('#date th').first().textContent()).toBe('Su');
@@ -436,8 +435,21 @@ test('range: two picks write the URL\'s parameters; presets; Clear removes them'
   expect(await page.locator('#url .al-hint').textContent()).toBe('Now pick the last day');
   await day('2026-11-12').hover();
   expect(await day('2026-11-14').evaluate((el) => el.classList.contains('between'))).toBe(true);
+  const said: string[] = [];
+  page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
   await day('2026-11-10').click();
-  await expect.poll(() => page.locator('#url-range').textContent()).toBe('2026-11-10/2026-11-16');
+  try {
+    await expect.poll(() => page.locator('#url-range').textContent()).toBe('2026-11-10/2026-11-16');
+  } catch (e) {
+    // what the page was at, for a failure seen only on CI's WebKit
+    console.log('range diagnostics', JSON.stringify({
+      url: page.url(), toggle: await toggle.textContent(), hint: await page.locator('#url .al-hint').textContent().catch(() => null),
+      open: await page.locator('#url [popover]').evaluate((el) => el.matches(':popover-open')),
+      picked: await page.$$eval('#url [data-al-day].picked, #url [data-al-day][aria-selected="true"]', (els) => els.map((x) => x.getAttribute('data-al-day'))),
+      navigation: await page.evaluate(() => typeof (window as unknown as { navigation?: unknown }).navigation), said,
+    }));
+    throw e;
+  }
   expect(new URL(page.url()).search).toBe('?start=2026-11-10&end=2026-11-16');
   expect(await toggle.textContent()).toBe('Nov 10, 2026 – Nov 16, 2026');
   await toggle.click();
