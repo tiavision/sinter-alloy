@@ -21,8 +21,8 @@ export class AlloyPalette extends AlloyPaletteComponent {
   #asked = 0;
 
   connected() {
-    // the dialog's contents render when it opens (sinter defers them): the field is reached through events and after
-    // showModal(), never as a ref at connect
+    // the dialog and its field are refs (sinter sets refs inside a closed dialog from 0.23; before, they were undefined
+    // until it opened, so #dialog() and #field() fall back to a query)
     const signal = this.#stop.signal, { open } = this.refs, dialog = this.#dialog();
     this.state.mac = /Mac|iPhone|iPad/.test(navigator.platform);
     open.addEventListener('click', () => this.#open(), { signal });
@@ -52,8 +52,8 @@ export class AlloyPalette extends AlloyPaletteComponent {
     clearTimeout(this.#timer);
   }
 
-  /** the dialog (not a ref: sinter defers a dialog's contents, and its refs with them, until it opens) */
-  #dialog = (): HTMLDialogElement => this.root.querySelector('dialog')!;
+  #dialog = (): HTMLDialogElement => (this.refs.dialog as HTMLDialogElement | undefined) ?? this.root.querySelector('dialog')!;
+  #field = (): HTMLInputElement | null => (this.refs.field as HTMLInputElement | undefined) ?? this.#dialog().querySelector('input');
   #text = (): PaletteText => ({ ...ENGLISH, ...this.props.text });
 
   #open() {
@@ -66,7 +66,7 @@ export class AlloyPalette extends AlloyPaletteComponent {
     this.state.q = '';
     this.#query('');
     dialog.showModal();
-    const field = () => dialog.querySelector<HTMLInputElement>('input');
+    const field = this.#field;
     field()?.focus();
     // rendered on opening: focus it once it is there
     if (!field()) requestAnimationFrame(() => field()?.focus());
@@ -92,7 +92,7 @@ export class AlloyPalette extends AlloyPaletteComponent {
         this.#remote = [];
       }
       this.state.loading = false;
-      this.state.results = rank(this.#dialog().querySelector('input')?.value ?? q, [...this.#local, ...this.#remote]);
+      this.state.results = rank(this.#field()?.value ?? q, [...this.#local, ...this.#remote]);
     }, 150);
   }
 

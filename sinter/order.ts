@@ -27,18 +27,22 @@ export function keysAfter<T>(list: readonly T[], move: Move, keyOf: KeyOf<T>): s
  * Neighbours with equal values (a list that was never ordered, every value 0) cannot be split: the value is
  * still placed by the store's tie rule (arrival order), so the server's answer, which renumbers, decides.
  */
-export function between<T>(list: readonly T[], move: Move, field: keyof T & string): number {
+export function between<T>(list: readonly T[], move: Move, field: keyof T & string, descending = false): number {
   const after = reorder(list, move);
-  return midway(after[move.to - 1]?.[field], after[move.to + 1]?.[field]);
+  return midway(after[move.to - 1]?.[field], after[move.to + 1]?.[field], descending);
 }
 
-/** Halfway between two sort values, one past the one that is there, 0 with neither; equal ones stay equal. */
-export function midway(a: unknown, b: unknown): number {
+/**
+ * Halfway between two sort values (the one before and the one after in the list's order), one past the one that is
+ * there at an end (below the first, above the last; the other way for a list sorted `descending`), 0 with neither;
+ * equal ones stay equal.
+ */
+export function midway(a: unknown, b: unknown, descending = false): number {
   const num = (v: unknown) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
-  const prev = num(a), next = num(b);
+  const prev = num(a), next = num(b), step = descending ? -1 : 1;
   if (prev == null && next == null) return 0;
-  if (prev == null) return next! - 1;
-  if (next == null) return prev + 1;
+  if (prev == null) return next! - step;
+  if (next == null) return prev + step;
   return prev === next ? prev : (prev + next) / 2;
 }
 
@@ -52,9 +56,9 @@ export function columnAfter<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf
 }
 
 /** The moved item's new sort value in its target column: halfway between its new neighbours' there. */
-export function rankIn<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf<T>, group: keyof T & string, field: keyof T & string): number {
+export function rankIn<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf<T>, group: keyof T & string, field: keyof T & string, descending = false): number {
   const rest = list.filter((x) => String(x[group]) === move.toGroup && keyOf(x) !== move.key);
-  return midway(rest[move.to - 1]?.[field], rest[move.to]?.[field]);
+  return midway(rest[move.to - 1]?.[field], rest[move.to]?.[field], descending);
 }
 
 /**

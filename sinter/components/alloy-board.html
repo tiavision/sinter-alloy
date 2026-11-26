@@ -14,7 +14,8 @@
   optimistic layer of the page's store, so it moves at once; then `PUT <save> { group, order }`, `order` every key of
   the target column in its new order (the server sets the card's group and renumbers that column); one request at a
   time; an answer holding the cards has their group and rank applied by key; a failure rolls back, shows
-  `text.failed` and emits `sort-error`. Without `resource` and `save`, a drop only emits `move` (a BoardMove) and the
+  `text.failed` and emits `sort-error`. `save` and `field` default to the resource's own as in <alloy-sortable>
+  (sinter 0.23+). Without `resource` (with sinter 0.22: without `save`), a drop only emits `move` (a BoardMove) and the
   page applies it (alloy.regroup for cards kept in state).
 
   - lists: the columns, in order; listKey: a column's key (the value of the cards' `group` field); listName: its name.

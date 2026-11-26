@@ -6,7 +6,7 @@ import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloyBoardComponent } from './alloy-board.html';
 import { BOARD_ENGLISH, cardIndex, cardLine, columnTotal, crossCard, dropCard, liftCard, placeAt, stepCard, type BoardDrag, type Column } from '../board.js';
 import { columnAfter, rankIn } from '../order.js';
-import { savedFields } from '../save.js';
+import { savedFields, saveTarget } from '../save.js';
 import type { BoardMove, BoardText, Move } from '../sinter.types.js';
 
 const EDGE = 40, SPEED = 14;
@@ -145,17 +145,20 @@ export class AlloyBoard extends AlloyBoardComponent {
 
   /** `resource` and `save`: the card's group and rank at once, then PUT <save> { group, order } */
   #save(move: BoardMove) {
-    const { resource, save, group, field = 'sort_order' } = this.props;
-    if (!resource || !save) return;
+    const { resource, group } = this.props;
+    if (!resource) return;
     const app = mounted(this.root);
     if (!app) return;
     const res = app.resource(resource);
+    const target = saveTarget(res, this.props, location.href);
+    if (!target) return;
+    const { url, field, descending } = target;
     const list = res.value() as readonly Record<string, unknown>[];
     const keyOf = (x: object) => res.keyOf(x as Record<string, unknown>);
     if (!list.some((x) => keyOf(x) === move.key)) return;
     const order = columnAfter(list, move, keyOf, group);
-    const rank = rankIn(list, move, keyOf, group, field);
-    const send = () => app.request(save, { method: 'PUT', body: { group: move.toGroup, order } });
+    const rank = rankIn(list, move, keyOf, group, field, descending);
+    const send = () => app.request(url, { method: 'PUT', body: { group: move.toGroup, order } });
     const run = () => (this.#queue = this.#queue.then(send, send));
     app.optimistic(() => res.merge(move.key, { [group]: move.toGroup, [field]: rank }), run).then(
       (answer) => {

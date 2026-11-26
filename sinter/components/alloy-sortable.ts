@@ -5,7 +5,7 @@ import { capture } from '../pointer.js';
 import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloySortableComponent } from './alloy-sortable.html';
 import { ENGLISH, drop, finalIndex, lift, lineAt, pointAt, step, type Drag } from '../sortable.js';
-import { saved, saveOrder } from '../save.js';
+import { saved, saveOrder, saveTarget } from '../save.js';
 import type { Move, SortableText } from '../sinter.types.js';
 
 /** how close to a scrolling box's edge (px) the pointer scrolls it, and how fast at the edge (px per frame) */
@@ -137,14 +137,17 @@ export class AlloySortable extends AlloySortableComponent {
 
   /** The round trip of a move (`resource`, `save`): an optimistic merge of the sort field, then the new order. */
   #save(move: Move) {
-    const { resource, save, field = 'sort_order' } = this.props;
-    if (!resource || !save) return;
+    const { resource } = this.props;
+    if (!resource) return;
     const app = mounted(this.root);
     if (!app) return;
     const res = app.resource(resource);
-    const order = saveOrder(res.value() as readonly object[], move, (x) => res.keyOf(x), field);
+    const target = saveTarget(res, this.props, location.href);
+    if (!target) return;
+    const { url, field, descending } = target;
+    const order = saveOrder(res.value() as readonly object[], move, (x) => res.keyOf(x), field, descending);
     if (!order) return;
-    const send = () => app.request(save, { method: 'PUT', body: { order: order.keys } });
+    const send = () => app.request(url, { method: 'PUT', body: { order: order.keys } });
     const run = () => (this.#queue = this.#queue.then(send, send));
     app.optimistic(() => res.merge(move.key, { [field]: order.value } as Record<string, unknown>), run).then(
       (answer) => {

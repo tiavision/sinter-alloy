@@ -7,10 +7,31 @@ import type { Move } from './sinter.types.js';
  * The new order of a list after `move`: every key in order (the request's `order`) and the moved item's new value of
  * the sort field (the optimistic change). Null when the list no longer has the item.
  */
-export function saveOrder<T extends object>(list: readonly T[], move: Move, keyOf: (item: T) => string, field: string):
+export function saveOrder<T extends object>(list: readonly T[], move: Move, keyOf: (item: T) => string, field: string, descending = false):
   { keys: string[]; value: number } | null {
   if (!list.some((x) => keyOf(x) === move.key)) return null;
-  return { keys: keysAfter(list, move, keyOf), value: between(list, move, field as keyof T & string) };
+  return { keys: keysAfter(list, move, keyOf), value: between(list, move, field as keyof T & string, descending) };
+}
+
+/**
+ * Where a self-saving component saves and which field it changes, from the resource's handle (sinter's `src` and
+ * `order`, from 0.23) and the props that override them: the URL is `save`, else `<src>/order` (the list's URL with
+ * `/order` added to its path, its query kept); the field is `field`, else the resource's `order` (`-rank` is `rank`,
+ * sorted descending), else `sort_order`. No URL (an older sinter, a resource without `src`) is null: nothing is saved.
+ */
+export function saveTarget(handle: { src?: string | null; order?: string | null }, props: { save?: string; field?: string }, base: string):
+  { url: string; field: string; descending: boolean } | null {
+  const order = handle.order?.trim() || '';
+  const descending = order.startsWith('-');
+  const ordered = order.replace(/^[-+]/, '');
+  const field = props.field || ordered || 'sort_order';
+  let url = props.save || null;
+  if (!url && handle.src) {
+    const u = new URL(handle.src, base);
+    u.pathname = u.pathname.replace(/\/+$/, '') + '/order';
+    url = u.origin === new URL(base).origin ? u.pathname + u.search : u.href;
+  }
+  return url ? { url, field, descending: descending && field === ordered } : null;
 }
 
 /**

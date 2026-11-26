@@ -25,11 +25,11 @@
       <span data-sn-text="text?.open ?? 'Search commands'"></span>
       <template data-sn-if="keys !== false"><kbd data-sn-text="mac ? '⌘K' : 'Ctrl K'"></kbd></template>
     </button>
-    <dialog class="al-dialog" data-tm-sheet="top" data-sn-attr="{ 'aria-label': label }">
+    <dialog class="al-dialog" data-tm-sheet="top" data-sn-ref="dialog" data-sn-attr="{ 'aria-label': label }">
       <div data-tm-layout="stack" data-tm-gap="sm">
         <div data-tm-field>
           <span data-tm-icon="search" aria-hidden="true"></span>
-          <input type="text" autocomplete="off" spellcheck="false" data-sn-options="alloy-palette-list"
+          <input type="text" autocomplete="off" spellcheck="false" data-sn-ref="field" data-sn-options="alloy-palette-list"
                  data-sn-model="q" data-sn-attr="{ 'aria-label': label, placeholder: text?.placeholder ?? 'Type a command or search' }">
         </div>
         <ul id="alloy-palette-list" role="listbox" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label, 'aria-busy': loading ? 'true' : null }">

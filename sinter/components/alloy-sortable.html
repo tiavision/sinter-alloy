@@ -21,10 +21,12 @@
   A drop merges the moved item's `field` (default 'sort_order', the resource's `order`) to a value between its new
   neighbours' as an optimistic layer of the page's store, so the row moves at once; the request then goes out (one at
   a time, in order); a failure drops the layer (the row goes back), shows `text.failed` in the component's alert line
-  and emits `sort-error`. `resource`, `field` and `save` are interim: once sinter passes a resource handle as a prop and
-  exposes its URL and `order` (docs/DESIGN.md, S9 and S10), `items: folders` alone is enough.
+  and emits `sort-error`. With sinter 0.23 or later, `save` and `field` default to the resource's own: its URL with
+  `/order` added (`/api/email/folders/order`, the query kept) and its `order` attribute (`-rank`: the field rank, sorted
+  descending), so `resource: 'folders'` is enough; with 0.22 the handle has neither, and `save` is needed. `resource`
+  itself stays until sinter passes a resource handle as a prop (docs/DESIGN.md, S9).
 
-  Without `resource` and `save` it changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
+  Without `resource` (or, with sinter 0.22, without `save`) it changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
   what that means, usually one optimistic merge and one request: with `order="sort_order"` on the resource,
   `merge(item, { sort_order: alloy.between(list, mv, 'sort_order') })` moves the row at once and rolls back with the
   request. Until the page changes `items`, the row stays where it was; a live update from another tab (a server
@@ -32,7 +34,8 @@
 
   - items: the rows, in their order. keyOf: a row's key (unique, stable). nameOf: its name for the handle's label
     and the announcements (default: the key). label: the list's accessible name.
-  - resource, field, save: the round trip above (`save` a full URL, the API's base included: sinter's request layer).
+  - resource, field, save: the round trip above (`save` a full URL, the API's base included: sinter's request layer;
+    `field` and `save` from the resource when left out, sinter 0.23+).
   - disabled: no handles, nothing moves (a pending save, a filtered list whose order means nothing).
   - quiet: the handles show on hover and focus only (on a touch screen they always show).
   - text: the words, for another language (SortableText; English by default).

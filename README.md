@@ -80,7 +80,7 @@ the drag handles' grip is temper's own) are served:
 | `keyOf` | a row's key (unique, stable) |
 | `nameOf` | its name, for the handle's label and the announcements (default: the key) |
 | `label` | the list's accessible name |
-| `resource`, `save`, `field` | the round trip: the resource's name, the full URL of `PUT { order }`, the sort field (default `sort_order`). Interim: once sinter passes a resource handle as a prop, `items` alone will do (docs/DESIGN.md, S9) |
+| `resource`, `save`, `field` | the round trip: the resource's name; the full URL of `PUT { order }` and the sort field, which from sinter 0.23 default to the resource's own (`<src>/order` and its `order`; before, `save` is needed and the field defaults to `sort_order`). `resource` stays until sinter passes a resource handle as a prop (docs/DESIGN.md, S9) |
 | `disabled` | no handles, nothing moves |
 | `quiet` | handles show on hover and focus only (always on touch screens) |
 | `text` | the words, for another language (`SortableText`, English by default) |
@@ -131,7 +131,7 @@ the page applies it; for cards kept in state, `alloy.regroup(cards, $event.detai
 | `lists`, `listKey`, `listName` | the columns in order, a column's key (the value of the cards' `group`), its name |
 | `items`, `keyOf`, `nameOf`, `group`, `field` | the cards, their key and name, the field naming their column, the sort field |
 | `label`, `disabled`, `text` | the board's accessible name; no handles; the words (`BoardText`) |
-| `resource`, `save` | the round trip above (interim, as the sortable's) |
+| `resource`, `save`, `field` | the round trip above (`save` and `field` from the resource from sinter 0.23, as the sortable's) |
 | slot `item` | a card: `$slot.item`, `$slot.index`, `$slot.list` |
 | slot `list` | a column's header: `$slot.list`, `$slot.count` (default: its name and a count badge) |
 | events | `move` (`BoardMove`, cancelable), `sort-error` (`{ move, error }`) |

@@ -85,3 +85,26 @@ test('saved: the sort values of an answer that is the list, or holds it; nothing
   expect(saved('ok', keyOf, 'rank')).toEqual([]);
   expect(saved({ count: 3 }, keyOf, 'rank')).toEqual([]);
 });
+
+test('between in a list sorted descending: past an end goes the other way', async () => {
+  const { midway } = await import('../sinter/order.js');
+  expect(midway(null, 5, true)).toBe(6); // first place: above the first value
+  expect(midway(5, null, true)).toBe(4); // last place: below the last value
+  expect(midway(9, 5, true)).toBe(7);
+  expect(midway(null, 5)).toBe(4);
+});
+
+test('saveTarget: the URL and field from the resource handle, the props over them', async () => {
+  const { saveTarget } = await import('../sinter/save.js');
+  const base = 'https://app.example/mail/';
+  expect(saveTarget({ src: '/api/email/folders', order: 'sort_order' }, {}, base))
+    .toEqual({ url: '/api/email/folders/order', field: 'sort_order', descending: false });
+  expect(saveTarget({ src: 'https://app.example/api/tasks/?list=3', order: '-rank' }, {}, base))
+    .toEqual({ url: '/api/tasks/order?list=3', field: 'rank', descending: true });
+  expect(saveTarget({ src: 'https://api.other/tasks', order: null }, {}, base))
+    .toEqual({ url: 'https://api.other/tasks/order', field: 'sort_order', descending: false });
+  expect(saveTarget({ src: '/api/tasks', order: '-rank' }, { save: '/api/tasks/reorder', field: 'pos' }, base))
+    .toEqual({ url: '/api/tasks/reorder', field: 'pos', descending: false });
+  // an older sinter's handle (no src) without `save`: nothing to save to
+  expect(saveTarget({}, {}, base)).toBeNull();
+});
