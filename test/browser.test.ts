@@ -385,7 +385,7 @@ test('date: the value in the page\'s language, the calendar under the field, key
   await toggle.click();
   const pop = page.locator('#date [popover]');
   await expect.poll(() => pop.evaluate((el) => el.matches(':popover-open'))).toBe(true);
-  expect(await toggle.getAttribute('aria-expanded')).toBe('true');
+  await expect.poll(() => toggle.getAttribute('aria-expanded')).toBe('true');
   // under the field, starting where it starts (not under the button at its end), once it has finished opening (temper
   // scales it in, which moves its box meanwhile; on a slow machine the transition may not have started yet)
   const f = (await page.locator('#date [data-tm-field]').boundingBox())!;
