@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a page that applies the move itself</title>
+</head>
+<body>
+  <!-- An API of another shape ("put it after X"): no `resource` or `save`, so the component only emits `move`, and the
+       page's action sends it as that API wants, with the same one-merge optimistic change through the helpers. -->
+  <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
+  <main data-sn-state="{ mv: /** @type {Move | null} */ (null) }">
+    <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
+                    data-sn-on-move="mv = $event.detail; run('move-task')">
+      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+    </alloy-sortable>
+    <span hidden id="move-task" data-sn-post="/api/tasks/move" data-sn-when="mv"
+          data-sn-body="{ id: mv.key, after: mv.after }"
+          data-sn-optimistic="merge(tasks.find((t) => t.id === mv.key), { rank: alloy.between(tasks, mv, 'rank') })"
+          data-sn-write-through="off"></span>
+  </main>
+</body>
+</html>

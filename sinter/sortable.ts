@@ -9,6 +9,7 @@ export const ENGLISH: SortableText = {
   moved: (name, position, total) => `${name}: position ${position} of ${total}.`,
   dropped: (name, position, total) => `Dropped ${name} at position ${position} of ${total}.`,
   cancelled: (name, position) => `Move cancelled. ${name} is back at position ${position}.`,
+  failed: 'The new order could not be saved.',
 };
 
 /**

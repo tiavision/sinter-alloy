@@ -10,7 +10,21 @@
   the app's `item` fill (it sees the page's scope and $slot.item, $slot.index). The component owns the row's frame
   only: a grip handle before the fill, and the row's look while it is moved.
 
-  It changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
+  Saving it itself (the usual case): name the resource and where the order goes, and the component does the round trip
+  against one API shape, `PUT <save> { order: [key, …] }` (every key of the list, in its new order; the server
+  renumbers; any 2xx; an answer that holds the list's items has their `field` applied by key):
+
+  <sn-resource name="folders" src="/email/folders" order="sort_order"></sn-resource>
+  <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, label: 'Folders',
+                                  resource: 'folders', save: '/api/email/folders/order' }">…</alloy-sortable>
+
+  A drop merges the moved item's `field` (default 'sort_order', the resource's `order`) to a value between its new
+  neighbours' as an optimistic layer of the page's store, so the row moves at once; the request then goes out (one at
+  a time, in order); a failure drops the layer (the row goes back), shows `text.failed` in the component's alert line
+  and emits `sort-error`. `resource`, `field` and `save` are interim: once sinter passes a resource handle as a prop and
+  exposes its URL and `order` (docs/DESIGN.md, S9 and S10), `items: folders` alone is enough.
+
+  Without `resource` and `save` it changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
   what that means, usually one optimistic merge and one request: with `order="sort_order"` on the resource,
   `merge(item, { sort_order: alloy.between(list, mv, 'sort_order') })` moves the row at once and rolls back with the
   request. Until the page changes `items`, the row stays where it was; a live update from another tab (a server
@@ -18,6 +32,7 @@
 
   - items: the rows, in their order. keyOf: a row's key (unique, stable). nameOf: its name for the handle's label
     and the announcements (default: the key). label: the list's accessible name.
+  - resource, field, save: the round trip above (`save` a full URL, the API's base included: sinter's request layer).
   - disabled: no handles, nothing moves (a pending save, a filtered list whose order means nothing).
   - quiet: the handles show on hover and focus only (on a touch screen they always show).
   - text: the words, for another language (SortableText; English by default).
@@ -28,8 +43,8 @@
 
   The script (alloy-sortable.ts) writes only the component's state; the state machine is ../sortable.ts.
 -->
-<template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move }">
-  <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '' }"
+<template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move; 'sort-error': SortError }">
+  <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '', error: '' }"
        data-sn-class="{ quiet: !!quiet, dragging: via === 'pointer' }">
     <ul role="list" data-layout="stack" data-gap="none" data-sn-attr="{ 'aria-label': label }">
       <template data-sn-for="(it, i) in items" data-sn-key="keyOf(it)">
@@ -46,6 +61,7 @@
       </template>
     </ul>
     <div class="al-status" data-sr-only role="status" data-sn-text="status"></div>
+    <template data-sn-if="error"><p role="alert" data-tone="danger" data-pad="xs" data-sn-text="error"></p></template>
   </div>
 </template>
 <style>

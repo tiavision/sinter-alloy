@@ -69,3 +69,19 @@ test('the pointer picks the place by the rows\' middles; the line shows it, not 
   expect(lineAt({ ...d, at: 4 }, 3, 4)).toBe('after');
   expect(lineAt({ ...d, at: 4 }, 2, 4)).toBeNull();
 });
+
+import { saveOrder, saved } from '../sinter/save.js';
+
+test('saveOrder: every key in its new order, and the moved item\'s new sort value', () => {
+  expect(saveOrder(rows, mv(0, 2), (r) => r.id, 'rank')).toEqual({ keys: ['b', 'c', 'a', 'd'], value: 2.5 });
+  expect(saveOrder(rows.slice(1), mv(0, 2), (r) => r.id, 'rank')).toBeNull(); // the item is gone
+});
+
+test('saved: the sort values of an answer that is the list, or holds it; nothing from other answers', () => {
+  const keyOf = (x: object) => (x as { id: string }).id;
+  expect(saved([{ id: 'a', rank: 1 }, { id: 'b', rank: 0 }], keyOf, 'rank')).toEqual([['a', 1], ['b', 0]]);
+  expect(saved({ tasks: [{ id: 'a', rank: 2 }, { id: 'b' }] }, keyOf, 'rank')).toEqual([['a', 2]]);
+  expect(saved(null, keyOf, 'rank')).toEqual([]);
+  expect(saved('ok', keyOf, 'rank')).toEqual([]);
+  expect(saved({ count: 3 }, keyOf, 'rank')).toEqual([]);
+});

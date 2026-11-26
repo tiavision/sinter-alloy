@@ -15,6 +15,7 @@ const read = (f: string) => readFileSync(join(PKG, f), 'utf8');
 const components = { 'alloy-sortable': read('sinter/components/alloy-sortable.html') };
 const scripts = { 'alloy-sortable': script };
 const page = read('fixtures/index.html');
+const manual = read('fixtures/manual.html');
 const TASKS = [{ id: 'a', title: 'Alpha', rank: 0 }, { id: 'b', title: 'Beta', rank: 1 }, { id: 'c', title: 'Gamma', rank: 2 }];
 const shown = (root: Element) => [...root.querySelectorAll('li[data-al-key]')].map((li) => li.getAttribute('data-al-key'));
 
@@ -38,9 +39,9 @@ function held(res: { status: number; body?: unknown }) {
 /** a script's state write renders on the next task; `settle()` would also wait for a held request */
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-async function mount(order: RouteResponse) {
-  const requests = mockRequests({ 'GET /api/tasks': TASKS, 'PUT /api/tasks/order': order });
-  const r = await render(page, { components, scripts, requests, helpers: { alloy }, storage: memoryStorage(), strict: true });
+async function mount(order: RouteResponse, html = page) {
+  const requests = mockRequests({ 'GET /api/tasks': TASKS, 'PUT /api/tasks/order': order, 'POST /api/tasks/move': order });
+  const r = await render(html, { components, scripts, requests, helpers: { alloy }, storage: memoryStorage(), strict: true });
   await r.settle();
   const handle = (k: string) => r.root.querySelector<HTMLElement>(`li[data-al-key="${k}"] > .al-handle`)!;
   return { ...r, requests, handle };
@@ -75,7 +76,7 @@ test('keyboard: pick up, move down twice, drop: the row moves at once and the ne
   expect(shown(root)).toEqual(['b', 'c', 'a']);
   expect(status()).toBe('Dropped Alpha at position 3 of 3.');
   const put = requests.calls.find((c) => c.method === 'PUT')!;
-  expect(put.body).toEqual({ ids: ['b', 'c', 'a'] });
+  expect(put.body).toEqual({ order: ['b', 'c', 'a'] });
   res.release();
   await settle();
   expect(shown(root)).toEqual(['b', 'c', 'a']);
@@ -94,7 +95,53 @@ test('a refused request puts the row back', async () => {
   res.release();
   await settle();
   expect(shown(root)).toEqual(['a', 'b', 'c']);
-  expect(root.querySelector('[role="alert"]')!.textContent).toBe('no');
+  expect(root.querySelector('.alloy-sortable [role="alert"]')!.textContent).toBe('The new order could not be saved.');
+});
+
+test('the server\'s answer (renumbered) replaces the fraction the optimistic change wrote', async () => {
+  // the server renumbers the order it was sent and answers the list
+  const answer: RouteResponse = (call) => ({ tasks: (call.body as { order: string[] }).order.map((id, rank) => ({ ...TASKS.find((t) => t.id === id)!, rank })) });
+  const { root, handle, settle } = await mount(answer);
+  const ranks = () => [...root.querySelectorAll('li[data-al-key]')].map((li) => li.getAttribute('data-al-key'));
+  press(handle('b'));
+  await settle();
+  key(handle('b'), 'ArrowUp');
+  press(handle('b'));
+  await settle();
+  expect(ranks()).toEqual(['b', 'a', 'c']);
+  // a second move is computed from the integers: b to the end lands after c (rank 3), not between fractions
+  press(handle('b'));
+  await settle();
+  key(handle('b'), 'End');
+  press(handle('b'));
+  await settle();
+  expect(ranks()).toEqual(['a', 'c', 'b']);
+});
+
+test('moves made before an answer are sent one after another, each with the order it made', async () => {
+  const res = held({ status: 204 });
+  const { root, handle, flush, settle, requests } = await mount(res.route);
+  press(handle('a')); await tick(); flush();
+  key(handle('a'), 'End'); press(handle('a')); await tick(); flush();
+  press(handle('b')); await tick(); flush();
+  key(handle('b'), 'End'); press(handle('b')); await tick(); flush();
+  expect(shown(root)).toEqual(['c', 'a', 'b']);
+  // the second waits for the first's answer
+  expect(requests.calls.filter((c) => c.method === 'PUT').map((c) => c.body)).toEqual([{ order: ['b', 'c', 'a'] }]);
+  res.release();
+  await settle();
+  expect(requests.calls.filter((c) => c.method === 'PUT').map((c) => c.body)).toEqual([{ order: ['b', 'c', 'a'] }, { order: ['c', 'a', 'b'] }]);
+});
+
+test('without resource and save the page applies the move: another API shape', async () => {
+  const { root, handle, settle, requests } = await mount({ status: 204 }, manual);
+  press(handle('c'));
+  await settle();
+  key(handle('c'), 'Home');
+  press(handle('c'));
+  await settle();
+  expect(shown(root)).toEqual(['c', 'a', 'b']);
+  expect(requests.calls.filter((c) => c.method !== 'GET').map((c) => [c.method, c.path, c.body])).toEqual([['POST', '/api/tasks/move', { id: 'c', after: null }]]);
 });
 
 test('Escape puts the row back without a request; dropping where it was sends nothing', async () => {

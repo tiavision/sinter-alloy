@@ -1,8 +1,10 @@
 // The script of <alloy-sortable>: pointer drags and keyboard moves of its rows. It reads the rows' boxes and
 // writes only the component's state (the lifted row, its offset, the drop line, the live region's text); a drop
 // emits `move` and the page changes the list. The decisions are ../sortable.ts, pure.
+import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloySortableComponent } from './alloy-sortable.html';
 import { ENGLISH, drop, finalIndex, lift, lineAt, pointAt, step, type Drag } from '../sortable.js';
+import { saved, saveOrder } from '../save.js';
 import type { Move, SortableText } from '../sinter.types.js';
 
 /** how close to a scrolling box's edge (px) the pointer scrolls it, and how fast at the edge (px per frame) */
@@ -25,6 +27,8 @@ export class AlloySortable extends AlloySortableComponent {
   #pointer: PointerDrag | null = null;
   /** the key whose handle takes the focus once the page has moved its row (a keyboard drop) */
   #refocus: string | null = null;
+  /** the saves in flight: each request waits for the one before it, so the server sees the orders in turn */
+  #queue: Promise<unknown> = Promise.resolve();
 
   connected() {
     const signal = this.#stop.signal, root = this.root;
@@ -126,7 +130,31 @@ export class AlloySortable extends AlloySortableComponent {
     }
     this.state.status = t.dropped(name, move.to + 1, keys.length);
     if (via === 'keyboard') this.#refocus = d.key;
-    this.emit('move', move);
+    // a page that handles the move itself prevents it; otherwise, with `resource` and `save`, the component saves it
+    if (this.emit('move', move)) this.#save(move);
+  }
+
+  /** The round trip of a move (`resource`, `save`): an optimistic merge of the sort field, then the new order. */
+  #save(move: Move) {
+    const { resource, save, field = 'sort_order' } = this.props;
+    if (!resource || !save) return;
+    const app = mounted(this.root);
+    if (!app) return;
+    const res = app.resource(resource);
+    const order = saveOrder(res.value() as readonly object[], move, (x) => res.keyOf(x), field);
+    if (!order) return;
+    const send = () => app.request(save, { method: 'PUT', body: { order: order.keys } });
+    const run = () => (this.#queue = this.#queue.then(send, send));
+    app.optimistic(() => res.merge(move.key, { [field]: order.value } as Record<string, unknown>), run).then(
+      (answer) => {
+        this.state.error = '';
+        // the server's values (renumbered) over the fractions the change wrote
+        for (const [key, value] of saved(answer, (x) => res.keyOf(x), field)) if (res.has(key)) res.merge(key, { [field]: value } as Record<string, unknown>);
+      },
+      (error: unknown) => {
+        if (this.emit('sort-error', { move, error })) this.state.error = this.#text().failed;
+      },
+    );
   }
 
   #key(e: KeyboardEvent) {
@@ -213,6 +241,14 @@ export class AlloySortable extends AlloySortableComponent {
 function handleKey(t: EventTarget | null): string | null {
   const h = asElement(t)?.closest('.al-handle');
   return (h?.parentElement as HTMLElement | null)?.dataset.alKey ?? null;
+}
+
+/** The sinter app the component is mounted in: the document's, or the nearest mount root above it (a test's). */
+function mounted(el: Element): App | null {
+  for (let n: Node | null = el; n; n = n.parentNode) {
+    try { return instance(n as Element | Document); } catch { /* not a mount root */ }
+  }
+  return null;
 }
 
 /** `t` as an element (no `instanceof`: the element may be another window's, a frame's or a test's). */

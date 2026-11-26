@@ -34,4 +34,12 @@ export interface SortableText {
   moved: (name: string, position: number, total: number) => string;
   dropped: (name: string, position: number, total: number) => string;
   cancelled: (name: string, position: number) => string;
+  /** the alert line when a saved order is refused (the row has gone back) */
+  failed: string;
+}
+
+/** `sort-error`'s detail: the move that was rolled back, and why (the request's error). */
+export interface SortError {
+  move: Move;
+  error: unknown;
 }
