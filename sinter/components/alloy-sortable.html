@@ -3,7 +3,7 @@
 
   <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, nameOf: (f) => f.display_name, label: 'Folders' }"
                   data-sn-on-move="mv = $event.detail; run('folders-order')">
-    <a slot="item" data-grow data-sn-href="/folder/{$slot.item.folder_id}" data-sn-text="$slot.item.display_name"></a>
+    <a slot="item" data-tm-grow data-sn-href="/folder/{$slot.item.folder_id}" data-sn-text="$slot.item.display_name"></a>
   </alloy-sortable>
 
   The list renders in the first frame like the page's own markup: the rows are a data-sn-for over `items`, each row
@@ -46,40 +46,29 @@
 <template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move; 'sort-error': SortError }">
   <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '', error: '' }"
        data-sn-class="{ quiet: !!quiet, dragging: via === 'pointer' }">
-    <ul role="list" data-layout="stack" data-gap="none" data-sn-attr="{ 'aria-label': label }">
+    <ul role="list" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label }">
       <template data-sn-for="(it, i) in items" data-sn-key="keyOf(it)">
-        <li data-layout="row" data-gap="none" data-wrap="none" data-align="center"
+        <li data-tm-layout="row" data-tm-gap="none" data-tm-wrap="none" data-tm-align="center"
             data-sn-let="{ k: keyOf(it), name: nameOf ? nameOf(it) : keyOf(it) }"
-            data-sn-attr="{ 'data-al-key': k, 'data-al-lifted': lifted === k ? via : null, 'data-al-line': lineKey === k ? lineSide : null }"
+            data-sn-attr="{ 'data-al-key': k, 'data-al-lifted': lifted === k ? via : null, 'data-tm-lifted': lifted === k ? '' : null, 'data-tm-drop': lineKey === k ? lineSide : null }"
             data-sn-style="{ '--al-dy': lifted === k && via === 'pointer' ? dy + 'px' : null }">
           <template data-sn-if="!disabled">
-            <button type="button" class="al-handle" data-variant="ghost" data-size="sm" data-icon="grip-vertical"
-                    data-sn-attr="{ 'aria-label': text?.handle ? text.handle(name) : 'Move ' + name, 'aria-description': instructions, 'aria-pressed': lifted === k ? 'true' : 'false' }"></button>
+            <button type="button" class="al-handle" data-tm-size="sm"
+                    data-sn-attr="{ 'data-tm-handle': quiet ? 'quiet' : '', 'aria-label': text?.handle ? text.handle(name) : 'Move ' + name, 'aria-description': instructions, 'aria-pressed': lifted === k ? 'true' : 'false' }"></button>
           </template>
-          <slot name="item" data-sn-with="{ item: it, index: i }"><span data-grow data-truncate data-sn-text="name"></span></slot>
+          <slot name="item" data-sn-with="{ item: it, index: i }"><span data-tm-grow data-tm-truncate data-sn-text="name"></span></slot>
         </li>
       </template>
     </ul>
-    <div class="al-status" data-sr-only role="status" data-sn-text="status"></div>
-    <template data-sn-if="error"><p role="alert" data-tone="danger" data-pad="xs" data-sn-text="error"></p></template>
+    <div class="al-status" data-tm-sr-only role="status" data-sn-text="status"></div>
+    <template data-sn-if="error"><p role="alert" data-tm-tone="danger" data-tm-pad="xs" data-sn-text="error"></p></template>
   </div>
 </template>
 <style>
-  ul { list-style: none; margin: 0; padding: 0; }
-  li { position: relative; border-radius: var(--tm-radius); }
-  .al-handle { touch-action: none; cursor: grab; flex: none; }
+  /* temper draws the handle (data-tm-handle), the lifted row (data-tm-lifted) and the drop line (data-tm-drop) */
+  li { border-radius: var(--tm-radius); }
   .dragging, .dragging * { cursor: grabbing; user-select: none; }
-  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); color: var(--tm-text); box-shadow: var(--tm-shadow-sm); }
-  li[data-al-lifted='pointer'] { transform: translateY(var(--al-dy, 0)); box-shadow: var(--tm-shadow-lg); }
-  li[data-al-line]::after {
-    content: ''; position: absolute; inset-inline: 0; block-size: 2px; border-radius: var(--tm-radius-full);
-    background: var(--tm-accent); pointer-events: none;
-  }
-  li[data-al-line='before']::after { inset-block-start: -1px; }
-  li[data-al-line='after']::after { inset-block-end: -1px; }
-  @media (hover: hover) {
-    .quiet li:not(:hover, :focus-within, [data-al-lifted]) .al-handle { opacity: 0; }
-  }
+  li[data-al-lifted='pointer'] { transform: translateY(var(--al-dy, 0)); }
   @media (prefers-reduced-motion: no-preference) {
     li { transition: box-shadow var(--tm-duration) var(--tm-ease); }
   }

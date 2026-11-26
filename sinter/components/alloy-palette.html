@@ -20,39 +20,39 @@
 -->
 <template data-sn-props="{ label: string; src?: string; commands?: readonly PaletteCommand[]; keys?: 'mod+k' | false; text?: Partial<PaletteText> }" data-sn-emits="{ pick: PaletteCommand }">
   <div class="alloy-palette" data-sn-state="{ q: '', results: /** @type {{ id: string; label: string; group?: string; keywords?: string; href?: string; shortcut?: string }[]} */ ([]), loading: false, mac: false }">
-    <button type="button" data-variant="outline" data-icon="search" data-sn-ref="open"
+    <button type="button" data-tm-variant="outline" data-tm-icon="search" data-sn-ref="open"
             data-sn-attr="{ 'aria-keyshortcuts': keys === false ? null : (mac ? 'Meta+K' : 'Control+K') }">
       <span data-sn-text="text?.open ?? 'Search commands'"></span>
       <template data-sn-if="keys !== false"><kbd data-sn-text="mac ? '⌘K' : 'Ctrl K'"></kbd></template>
     </button>
-    <dialog class="al-dialog" data-sn-attr="{ 'aria-label': label }">
-      <div data-layout="stack" data-gap="sm">
-        <div data-field>
-          <span data-icon="search" aria-hidden="true"></span>
+    <dialog class="al-dialog" data-tm-sheet="top" data-sn-attr="{ 'aria-label': label }">
+      <div data-tm-layout="stack" data-tm-gap="sm">
+        <div data-tm-field>
+          <span data-tm-icon="search" aria-hidden="true"></span>
           <input type="text" autocomplete="off" spellcheck="false" data-sn-options="alloy-palette-list"
                  data-sn-model="q" data-sn-attr="{ 'aria-label': label, placeholder: text?.placeholder ?? 'Type a command or search' }">
         </div>
-        <ul id="alloy-palette-list" role="listbox" data-layout="stack" data-gap="none" data-sn-attr="{ 'aria-label': label, 'aria-busy': loading ? 'true' : null }">
+        <ul id="alloy-palette-list" role="listbox" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label, 'aria-busy': loading ? 'true' : null }">
           <template data-sn-for="(r, i) in results" data-sn-key="r.id">
-            <li role="option" data-layout="row" data-gap="sm" data-align="center" data-wrap="none" data-pad="xs"
+            <li role="option" data-tm-layout="row" data-tm-gap="sm" data-tm-align="center" data-tm-wrap="none" data-tm-pad="xs"
                 data-sn-on-click="emit('pick', r)">
-              <span data-icon="chevron-right" aria-hidden="true"></span>
-              <span data-grow data-truncate data-sn-text="r.label"></span>
+              <span data-tm-icon="chevron-right" aria-hidden="true"></span>
+              <span data-tm-grow data-tm-truncate data-sn-text="r.label"></span>
               <template data-sn-if="r.shortcut"><kbd data-sn-text="r.shortcut"></kbd></template>
-              <span class="al-group" data-caption data-sn-text="i === 0 || results[i - 1]?.group !== r.group ? (r.group ?? '') : ''"></span>
+              <span class="al-group" data-tm-caption data-sn-text="i === 0 || results[i - 1]?.group !== r.group ? (r.group ?? '') : ''"></span>
             </li>
           </template>
         </ul>
-        <template data-sn-if="!results.length && !loading"><p data-muted data-pad="xs" data-sn-text="text?.empty ?? 'Nothing found'"></p></template>
+        <template data-sn-if="!results.length && !loading"><p data-tm-muted data-tm-pad="xs" data-sn-text="text?.empty ?? 'Nothing found'"></p></template>
       </div>
     </dialog>
   </div>
 </template>
 <style>
-  .al-dialog { inline-size: min(36rem, calc(100vw - 2 * var(--tm-space-md))); padding: var(--tm-space-sm); }
-  ul { list-style: none; margin: 0; padding: 0; max-block-size: min(24rem, 60vh); overflow: auto; }
-  li { border-radius: var(--tm-radius); cursor: pointer; color: var(--tm-text); }
-  li:hover, li[data-sn-marked] { background: var(--tm-fill); }
+  /* temper: the dialog along the top edge (data-tm-sheet="top"), the options' look in a listbox */
+  .al-dialog { --tm-dialog-width: 36rem; }
+  ul { max-block-size: min(24rem, 60vh); overflow: auto; }
+  li[data-sn-marked] { background: var(--tm-fill); }
   .al-group { min-inline-size: 6rem; text-align: end; }
   kbd { flex: none; }
 </style>

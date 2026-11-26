@@ -57,7 +57,7 @@ const shots = {
   async date(page) {
     const field = page.locator('.alloy-date').first();
     await toTop(field);
-    await page.locator('button[data-icon=calendar][aria-haspopup=dialog]').first().click();
+    await page.locator('button[data-tm-icon=calendar][aria-haspopup=dialog]').first().click();
     const pop = page.locator('[popover]:popover-open');
     await pop.waitFor();
     await page.waitForFunction(() => document.activeElement?.hasAttribute('data-al-day'));

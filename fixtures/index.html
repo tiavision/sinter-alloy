@@ -12,7 +12,7 @@
   <main>
     <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
                                     resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
-      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+      <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-sortable>
   </main>
 </body>

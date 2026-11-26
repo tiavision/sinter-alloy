@@ -46,21 +46,7 @@
   .alloy-split.column { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--al-size, 30%) auto minmax(0, 1fr); }
   .alloy-split.column.reverse { grid-template-rows: minmax(0, 1fr) auto var(--al-size, 30%); }
   .al-pane { min-inline-size: 0; min-block-size: 0; overflow: auto; }
-  .al-separator {
-    position: relative; inline-size: 9px; margin-inline: -4px; z-index: 1;
-    cursor: col-resize; touch-action: none; outline: none;
-  }
-  .column > .al-separator { inline-size: auto; block-size: 9px; margin-inline: 0; margin-block: -4px; cursor: row-resize; }
-  .al-separator::before {
-    content: ''; position: absolute; inset-block: 0; inset-inline-start: 4px; inline-size: 1px; background: var(--tm-border);
-  }
-  .column > .al-separator::before { inset-inline: 0; inset-block-start: 4px; inline-size: auto; block-size: 1px; }
-  .al-separator:hover::before, .al-separator:focus-visible::before, .dragging > .al-separator::before {
-    background: var(--tm-accent); inset-inline-start: 3px; inline-size: 3px;
-  }
-  .column > .al-separator:hover::before, .column > .al-separator:focus-visible::before, .column.dragging > .al-separator::before {
-    inset-inline-start: 0; inline-size: auto; inset-block-start: 3px; block-size: 3px;
-  }
+  /* the separator's line, hit area and accent are temper's (a focusable role="separator") */
   .dragging, .dragging * { cursor: col-resize; user-select: none; }
   .column.dragging, .column.dragging * { cursor: row-resize; }
 </style>

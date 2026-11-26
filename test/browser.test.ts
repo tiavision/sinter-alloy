@@ -184,7 +184,7 @@ test('a mouse drag saves the order itself: the row moves at once, the server get
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   for (let i = 1; i <= 8; i++) await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + (to.y + 3 - from.y - from.height / 2) * i / 8);
-  await expect.poll(() => page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('a');
+  await expect.poll(() => page.locator('li[data-tm-drop="before"]').getAttribute('data-al-key')).toBe('a');
   await page.mouse.up();
   await settled(page, ['c', 'a', 'b']);
   await expect.poll(() => writes).toEqual([['PUT', '/api/tasks/order', { order: ['c', 'a', 'b'] }]]);
@@ -256,7 +256,7 @@ test('board: a mouse drag to another column moves the card at once and saves tha
   const target = (await page.locator('li[data-al-key="c"]').boundingBox())!;
   await drag(page, from, target.x + target.width / 2, target.y + 3, async () => {
     expect(await page.locator('li[data-al-lifted="pointer"]').getAttribute('data-al-key')).toBe('a');
-    await expect.poll(() => page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('c');
+    await expect.poll(() => page.locator('li[data-tm-drop="before"]').getAttribute('data-al-key')).toBe('c');
   });
   await expect.poll(() => board(page)).toEqual({ todo: ['b'], doing: ['a', 'c'], done: [] });
   await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'doing', order: ['a', 'c'] }]]);
@@ -271,7 +271,7 @@ test('board: an empty column is outlined and takes the card', async () => {
   const from = (await handle(page, 'Beta').boundingBox())!;
   const done = (await page.locator('[data-al-group="done"] ul').boundingBox())!;
   await drag(page, from, done.x + done.width / 2, done.y + done.height / 2, async () => {
-    await expect.poll(() => page.locator('[data-al-group="done"] ul').getAttribute('data-al-line')).toBe('empty');
+    await expect.poll(() => page.locator('[data-al-group="done"] ul').getAttribute('data-tm-drop')).toBe('inside');
   });
   await expect.poll(() => board(page)).toEqual({ todo: ['a'], doing: ['c'], done: ['b'] });
   await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'done', order: ['b'] }]]);
@@ -387,7 +387,7 @@ test('date: the value in the page\'s language, the calendar under the field, key
   expect(await toggle.getAttribute('aria-expanded')).toBe('true');
   // under the field, starting where it starts (not under the button at its end), once it has finished opening (temper
   // scales it in, which moves its box meanwhile; on a slow machine the transition may not have started yet)
-  const f = (await page.locator('#date [data-field]').boundingBox())!;
+  const f = (await page.locator('#date [data-tm-field]').boundingBox())!;
   await expect.poll(async () => Math.abs((await pop.boundingBox())!.x - f.x)).toBeLessThan(1);
   expect((await pop.boundingBox())!.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
   // the value's day has the focus; a Sunday-first American week; marks and today
@@ -486,7 +486,7 @@ test('palette: Ctrl+K opens it with the page\'s own commands; typing ranks; Ente
   const dialog = page.locator('.alloy-palette dialog');
   await expect.poll(() => dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(true);
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('combobox');
-  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-truncate]', (els) => els.map((e) => e.textContent));
+  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-tm-truncate]', (els) => els.map((e) => e.textContent));
   await expect.poll(labels).toEqual(['Switch theme', 'Overview', 'Board', 'Split panes', 'Refresh mail']);
   await page.keyboard.type('boa');
   await expect.poll(labels).toEqual(['Board']);
@@ -499,7 +499,7 @@ test('palette: Ctrl+K opens it with the page\'s own commands; typing ranks; Ente
 test('palette: a page button runs, a page command emits pick, the server\'s answers join, recent first', async () => {
   const { page, check } = await open('palette/');
   const dialog = page.locator('.alloy-palette dialog');
-  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-truncate]', (els) => els.map((e) => e.textContent));
+  const labels = () => page.$$eval('.alloy-palette [role="option"] [data-tm-truncate]', (els) => els.map((e) => e.textContent));
   // the button: its shortcut shown, clicked when picked; the focus goes back
   await page.locator('.alloy-palette > button').click();
   await page.keyboard.type('refresh');

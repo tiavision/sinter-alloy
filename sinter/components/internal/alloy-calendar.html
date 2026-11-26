@@ -9,14 +9,14 @@
   The script (alloy-calendar.ts) computes the grid and names into state from `locale`; the decisions are ../../calendar.ts.
 -->
 <template data-sn-props="{ locale: string; today: string; value?: string; start?: string; end?: string; min?: string; max?: string; marks?: readonly string[]; prev: string; next: string }" data-sn-emits="{ pick: string }">
-  <div class="alloy-calendar" data-layout="stack" data-gap="xs"
+  <div class="alloy-calendar" data-tm-layout="stack" data-tm-gap="xs"
        data-sn-state="{ month: '', focus: '', hover: '', title: '', names: /** @type {{ short: string; long: string }[]} */ ([]), weeks: /** @type {{ iso: string; day: number; inMonth: boolean }[][]} */ ([]), labels: /** @type {Record<string, string>} */ ({}) }">
-    <div data-layout="row" data-gap="xs" data-align="center" data-wrap="none">
-      <button type="button" class="al-prev" data-variant="ghost" data-size="sm" data-icon="chevron-left" data-sn-attr="{ 'aria-label': prev }"></button>
-      <strong class="al-title" data-grow aria-live="polite" data-sn-text="title"></strong>
-      <button type="button" class="al-next" data-variant="ghost" data-size="sm" data-icon="chevron-right" data-sn-attr="{ 'aria-label': next }"></button>
+    <div data-tm-layout="row" data-tm-gap="xs" data-tm-align="center" data-tm-wrap="none">
+      <button type="button" class="al-prev" data-tm-variant="ghost" data-tm-size="sm" data-tm-icon="chevron-left" data-sn-attr="{ 'aria-label': prev }"></button>
+      <strong class="al-title" data-tm-grow aria-live="polite" data-sn-text="title"></strong>
+      <button type="button" class="al-next" data-tm-variant="ghost" data-tm-size="sm" data-tm-icon="chevron-right" data-sn-attr="{ 'aria-label': next }"></button>
     </div>
-    <table role="grid" data-sn-attr="{ 'aria-label': title }">
+    <table role="grid" data-tm-plain data-sn-attr="{ 'aria-label': title }">
       <thead>
         <tr><template data-sn-for="n in names" data-sn-key="n.long"><th scope="col" data-sn-attr="{ abbr: n.long }" data-sn-text="n.short"></th></template></tr>
       </thead>
@@ -40,14 +40,12 @@
 </template>
 <style>
   .al-title { text-align: center; text-transform: capitalize; }
-  /* a grid, not a data table: none of temper's table look (row lines, stripes, hover rows) */
-  table { border-collapse: separate; border-spacing: 2px; margin-inline: auto; inline-size: auto; background: none; }
-  tr, tbody tr:nth-child(n), tbody tr:hover { background: none; }
-  thead, tbody, tr, th, td { border: 0; background: none; box-shadow: none; }
+  /* a grid, not a data table: data-tm-plain drops temper's table look (row lines, stripes, hover rows) */
+  table { border-collapse: separate; border-spacing: 2px; margin-inline: auto; inline-size: auto; }
   th { font-size: var(--tm-text-xs); font-weight: 500; color: var(--tm-text-muted); padding: 0; text-align: center; }
   td { padding: 0; }
   button[data-al-day] {
-    /* temper lays out buttons in a data-menu as start-aligned rows: centre the number */
+    /* temper lays out buttons in a data-tm-menu as start-aligned rows: centre the number */
     position: relative; display: grid; place-items: center; justify-content: center; text-align: center;
     inline-size: 2.25rem; block-size: 2.25rem; min-block-size: 0; padding: 0;
     border: 0; border-radius: var(--tm-radius); background: transparent; color: var(--tm-text);
@@ -58,7 +56,6 @@
   button.out { color: var(--tm-text-muted); }
   button.between { background: color-mix(in oklab, var(--tm-accent) 18%, transparent); border-radius: 0; }
   button.picked { background: var(--tm-accent); color: var(--tm-bg); font-weight: 600; }
-  button[aria-current='date']:not(.picked) { box-shadow: inset 0 0 0 1px var(--tm-accent); }
   button[aria-disabled='true'] { color: var(--tm-text-muted); opacity: 0.45; cursor: default; background: transparent; }
   button.marked::after {
     content: ''; position: absolute; inset-block-end: 4px; inset-inline-start: calc(50% - 2px);

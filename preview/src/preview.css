@@ -2,8 +2,8 @@
 /* Outside temper's layer on purpose: a host page's own reset (the artifact viewer's pins color-scheme: light and may give
    body a colour) would otherwise win over temper's layered :root and html rules, and leave dark ink on dark surfaces. */
 :root { color-scheme: light dark; }
-:root[data-theme='light'] { color-scheme: light; }
-:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-tm-theme='light'] { color-scheme: light; }
+:root[data-tm-theme='dark'] { color-scheme: dark; }
 body { background: var(--tm-bg); color: var(--tm-text); }
 .page { max-inline-size: 64rem; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); padding-block: var(--tm-space-xl); }
 .lede { max-inline-size: 42rem; color: var(--tm-text-muted); }
@@ -13,4 +13,4 @@ body { background: var(--tm-bg); color: var(--tm-text); }
 /* split panes: the live one needs a box with a height */
 .split-box { block-size: 13rem; border: 1px solid var(--tm-border); border-radius: var(--tm-radius); overflow: hidden; }
 .list-box { block-size: 18rem; border: 1px solid var(--tm-border); border-radius: var(--tm-radius); overflow: hidden; }
-.list-box [role='listitem'] > [data-pad] { padding-inline: var(--tm-space-sm); }
+.list-box [role='listitem'] > [data-tm-pad] { padding-inline: var(--tm-space-sm); }

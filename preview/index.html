@@ -11,7 +11,7 @@
   <!-- The library's preview: alloy-sortable and alloy-board running over this page's state (no server: each move is
        applied with alloy.reorder / alloy.regroup, and the request a self-saving use would send is shown under it), and
        mockups of the designed components, drawn with the temper attributes they would use. -->
-  <main class="page" data-layout="stack" data-gap="xl"
+  <main class="page" data-tm-layout="stack" data-tm-gap="xl"
         data-sn-state="{
           folders: [
             { id: 'f1', name: 'Follow-up', unread: 3 },
@@ -37,52 +37,52 @@
           picked: '',
           shown: 500,
         }">
-    <header data-layout="stack" data-gap="sm">
-      <span data-caption>@tiavision/sinter-alloy · 0.1.0</span>
+    <header data-tm-layout="stack" data-tm-gap="sm">
+      <span data-tm-caption>@tiavision/sinter-alloy · 0.1.0</span>
       <h1>sinter-alloy</h1>
       <p class="lede">Opinionated sinter components for what attributes cannot do, all running live below: drag a
         row or card by its handle (or focus it and use Space and the arrow keys), drag the split's separator, pick dates,
         press Ctrl+K, scroll the long list.</p>
-      <div data-layout="row" data-gap="xs">
-        <span data-badge data-tone="success">7 built</span>
+      <div data-tm-layout="row" data-tm-gap="xs">
+        <span data-tm-badge data-tm-tone="success">7 built</span>
       </div>
     </header>
 
     <!-- ── Sortable ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-sortable">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-sortable">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-sortable">Sortable list</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-sortable&gt;</code>
       </div>
       <p class="lede">Reorder with a mouse, touch or the keyboard. The row moves at once; a self-saving use then sends the
         whole order in one request, and a refused one puts the row back.</p>
-      <div data-layout="grid" data-gap="lg" data-align="start" style="--tm-min: 18rem">
-        <article class="demo" data-layout="stack" data-gap="sm">
-          <span data-caption>Virtual folders</span>
+      <div data-tm-layout="grid" data-tm-gap="lg" data-tm-align="start" style="--tm-min: 18rem">
+        <article class="demo" data-tm-layout="stack" data-tm-gap="sm">
+          <span data-tm-caption>Virtual folders</span>
           <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.id, nameOf: (f) => f.name, label: 'Virtual folders' }"
                           data-sn-on-move="folders = alloy.reorder(folders, $event.detail); lastFolder = $event.detail">
-            <div slot="item" class="folder-row" data-layout="row" data-gap="sm" data-align="center" data-wrap="none" data-grow>
-              <span data-icon="layers" aria-hidden="true"></span>
-              <span data-truncate data-grow data-sn-text="$slot.item.name"></span>
-              <template data-sn-if="$slot.item.unread > 0"><span data-badge data-tone="accent" data-sn-text="$slot.item.unread"></span></template>
+            <div slot="item" class="folder-row" data-tm-layout="row" data-tm-gap="sm" data-tm-align="center" data-tm-wrap="none" data-tm-grow>
+              <span data-tm-icon="layers" aria-hidden="true"></span>
+              <span data-tm-truncate data-tm-grow data-sn-text="$slot.item.name"></span>
+              <template data-sn-if="$slot.item.unread > 0"><span data-tm-badge data-tm-tone="accent" data-sn-text="$slot.item.unread"></span></template>
             </div>
           </alloy-sortable>
         </article>
-        <div class="demo" data-layout="stack" data-gap="sm">
-          <span data-caption>What a self-saving use sends</span>
+        <div class="demo" data-tm-layout="stack" data-tm-gap="sm">
+          <span data-tm-caption>What a self-saving use sends</span>
           <pre class="code" data-sn-text="lastFolder ? 'PUT /api/email/folders/order\n' + JSON.stringify({ order: folders.map((f) => f.id) }, null, 1) : 'Move a folder to see the request.'"></pre>
-          <span data-caption>The move event</span>
+          <span data-tm-caption>The move event</span>
           <pre class="code" data-sn-text="lastFolder ? JSON.stringify(lastFolder, null, 1) : '—'"></pre>
         </div>
       </div>
     </section>
 
     <!-- ── Board ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-board">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-board">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-board">Board</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-board&gt;</code>
       </div>
       <p class="lede">Cards move within a column and between columns; Left and Right move a picked-up card to the
@@ -91,19 +91,19 @@
                                    listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
                                    nameOf: (c) => c.title, group: 'status', label: 'Release plan' }"
                    data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status'); lastCard = $event.detail">
-        <div slot="item" data-layout="stack" data-gap="xs" data-grow>
+        <div slot="item" data-tm-layout="stack" data-tm-gap="xs" data-tm-grow>
           <span data-sn-text="$slot.item.title"></span>
-          <span data-caption data-sn-text="$slot.item.tag"></span>
+          <span data-tm-caption data-sn-text="$slot.item.tag"></span>
         </div>
       </alloy-board>
       <pre class="code" data-sn-text="lastCard ? 'PUT /api/cards/order\n' + JSON.stringify({ group: lastCard.toGroup, order: cards.filter((c) => c.status === lastCard?.toGroup).map((c) => c.id) }) : 'Move a card to see the request.'"></pre>
     </section>
 
     <!-- ── Split panes ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-split">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-split">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-split">Split panes</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-split&gt;</code>
       </div>
       <p class="lede">Owns its two panes and keeps their size itself. Drag the separator, or focus it and use the arrow
@@ -112,17 +112,17 @@
       <div class="split-box">
         <alloy-split data-sn-with="{ name: 'preview-folders', initial: 176, min: 120, max: 400, label: 'Folders width', controls: 'preview-folders' }"
                      data-sn-on-change="splitSize = $event.detail">
-          <nav slot="start" id="preview-folders" data-layout="stack" data-gap="xs" data-pad="sm">
-            <span data-caption>Folders</span>
-            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="inbox" aria-current="true">Inbox</button>
-            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="send">Sent</button>
-            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="archive">Archive</button>
+          <nav slot="start" id="preview-folders" data-tm-layout="stack" data-tm-gap="xs" data-tm-pad="sm">
+            <span data-tm-caption>Folders</span>
+            <button type="button" data-tm-variant="item" data-tm-size="sm" data-tm-layout="row" data-tm-gap="sm" data-tm-wrap="none" data-tm-icon="inbox" aria-current="true">Inbox</button>
+            <button type="button" data-tm-variant="item" data-tm-size="sm" data-tm-layout="row" data-tm-gap="sm" data-tm-wrap="none" data-tm-icon="send">Sent</button>
+            <button type="button" data-tm-variant="item" data-tm-size="sm" data-tm-layout="row" data-tm-gap="sm" data-tm-wrap="none" data-tm-icon="archive">Archive</button>
           </nav>
-          <div slot="end" data-layout="stack" data-gap="xs" data-pad="sm">
+          <div slot="end" data-tm-layout="stack" data-tm-gap="xs" data-tm-pad="sm">
             <strong>Sprint 24 notes</strong>
-            <span data-muted>Alice Brennan · Nov 25</span>
+            <span data-tm-muted>Alice Brennan · Nov 25</span>
             <p>The second pane takes the rest of the width.</p>
-            <span data-caption data-sn-text="splitSize ? 'change: ' + splitSize + ' px' : ''"></span>
+            <span data-tm-caption data-sn-text="splitSize ? 'change: ' + splitSize + ' px' : ''"></span>
           </div>
         </alloy-split>
       </div>
@@ -132,32 +132,32 @@
     </section>
 
     <!-- ── Date, range and month pickers ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-range">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-range">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-range">Date, range and month pickers</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-date&gt;</code> <code>&lt;alloy-range&gt;</code> <code>&lt;alloy-month&gt;</code>
       </div>
       <p class="lede">Dates in the page's language, whatever the browser's: this page is English, so the week starts on
         Sunday; a German page would start it on Monday and write 10.11.2026. Type a date or open the calendar; in it the
         arrow keys move by a day or a week and PageUp/PageDown by a month. A range in a real page goes to two URL
         parameters; here it goes to the page's state.</p>
-      <div data-layout="row" data-gap="lg" data-align="start">
-        <div data-layout="stack" data-gap="xs">
-          <span data-caption>Due date (dots: days with events)</span>
+      <div data-tm-layout="row" data-tm-gap="lg" data-tm-align="start">
+        <div data-tm-layout="stack" data-tm-gap="xs">
+          <span data-tm-caption>Due date (dots: days with events)</span>
           <alloy-date data-sn-model="due" data-sn-with="{ label: 'Due date', marks: ['2026-11-12', '2026-11-20', '2026-11-27'] }"></alloy-date>
-          <span data-caption data-sn-text="'value: ' + (due || '—')"></span>
+          <span data-tm-caption data-sn-text="'value: ' + (due || '—')"></span>
         </div>
-        <div data-layout="stack" data-gap="xs">
-          <span data-caption>Search period</span>
+        <div data-tm-layout="stack" data-tm-gap="xs">
+          <span data-tm-caption>Search period</span>
           <alloy-range data-sn-with="{ start: period.start, end: period.end, label: 'Search period' }"
                        data-sn-on-change="period = $event.detail"></alloy-range>
-          <span data-caption data-sn-text="period.start ? '?start=' + period.start + '&end=' + period.end : 'no range'"></span>
+          <span data-tm-caption data-sn-text="period.start ? '?start=' + period.start + '&end=' + period.end : 'no range'"></span>
         </div>
-        <div data-layout="stack" data-gap="xs">
-          <span data-caption>Month</span>
+        <div data-tm-layout="stack" data-tm-gap="xs">
+          <span data-tm-caption>Month</span>
           <alloy-month data-sn-model="month" data-sn-with="{ label: 'Month' }"></alloy-month>
-          <span data-caption data-sn-text="'value: ' + month"></span>
+          <span data-tm-caption data-sn-text="'value: ' + month"></span>
         </div>
       </div>
       <pre class="code">&lt;alloy-date data-sn-model="draft.date" data-sn-with="{ label: 'Due date', marks }"&gt;&lt;/alloy-date&gt;
@@ -165,16 +165,16 @@
     </section>
 
     <!-- ── Command palette ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-palette">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-palette">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-palette">Command palette</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-palette&gt;</code>
       </div>
       <p class="lede">Press <kbd>Ctrl</kbd> <kbd>K</kbd> (<kbd>⌘</kbd> <kbd>K</kbd> on a Mac) or the button. It lists
         the page's own navigation and shortcut buttons with no setup (here: the Shuffle button below), the page's own
         commands (the sections of this page), and in a real app the server's answers as you type.</p>
-      <div data-layout="row" data-gap="sm" data-align="center">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <alloy-palette data-sn-with="{ label: 'Commands', commands: [
                          { id: 'go-sortable', label: 'Sortable list', group: 'This page', href: '#h-sortable' },
                          { id: 'go-board', label: 'Board', group: 'This page', href: '#h-board' },
@@ -184,17 +184,17 @@
                          { id: 'hello', label: 'Say hello', group: 'Actions' },
                        ] }"
                        data-sn-on-pick="picked = $event.detail.label"></alloy-palette>
-        <button type="button" data-variant="ghost" data-shortcut="s" aria-keyshortcuts="S"
+        <button type="button" data-tm-variant="ghost" data-shortcut="s" aria-keyshortcuts="S"
                 data-sn-on-click="folders = folders.toReversed()">Shuffle folders</button>
-        <span data-caption data-sn-text="picked ? 'picked: ' + picked : ''"></span>
+        <span data-tm-caption data-sn-text="picked ? 'picked: ' + picked : ''"></span>
       </div>
     </section>
 
     <!-- ── Long list ── -->
-    <section data-layout="stack" data-gap="md" aria-labelledby="h-virtual">
-      <div data-layout="row" data-gap="sm" data-align="center">
+    <section data-tm-layout="stack" data-tm-gap="md" aria-labelledby="h-virtual">
+      <div data-tm-layout="row" data-tm-gap="sm" data-tm-align="center">
         <h2 id="h-virtual">Long list</h2>
-        <span data-badge data-tone="success">Built</span>
+        <span data-tm-badge data-tm-tone="success">Built</span>
         <code>&lt;alloy-virtual&gt;</code>
       </div>
       <p class="lede">Renders only the rows in view. Scroll it: when the view reaches the last loaded row it emits
@@ -203,17 +203,17 @@
       <div class="list-box" data-sn-let="{ crowd: people(shown) }">
         <alloy-virtual data-sn-with="{ items: crowd, keyOf: (p) => p.id, label: 'Contacts', estimate: 44, total: 5000 }"
                        data-sn-on-end="shown = Math.min(5000, shown + 500)">
-          <div slot="item" data-layout="row" data-gap="sm" data-align="center" data-pad="xs">
-            <span data-avatar data-size="sm" data-sn-text="$slot.item.initials"></span>
-            <span data-grow data-truncate data-sn-text="$slot.item.name"></span>
-            <span data-muted data-sn-text="($slot.index + 1).toLocaleString('en') + ' of 5,000'"></span>
+          <div slot="item" data-tm-layout="row" data-tm-gap="sm" data-tm-align="center" data-tm-pad="xs">
+            <span data-tm-avatar data-tm-size="sm" data-sn-text="$slot.item.initials"></span>
+            <span data-tm-grow data-tm-truncate data-sn-text="$slot.item.name"></span>
+            <span data-tm-muted data-sn-text="($slot.index + 1).toLocaleString('en') + ' of 5,000'"></span>
           </div>
         </alloy-virtual>
       </div>
-      <span data-caption data-sn-text="'loaded: ' + shown.toLocaleString('en') + ' · rendered: a screenful'"></span>
+      <span data-tm-caption data-sn-text="'loaded: ' + shown.toLocaleString('en') + ' · rendered: a screenful'"></span>
     </section>
 
-    <footer data-muted>Design, open questions and what sinter and temper would need: docs/DESIGN.md in tiavision/sinter-alloy.</footer>
+    <footer data-tm-muted>Design, open questions and what sinter and temper would need: docs/DESIGN.md in tiavision/sinter-alloy.</footer>
   </main>
 </body>
 </html>

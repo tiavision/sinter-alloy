@@ -22,7 +22,7 @@ design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN
 
 <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
                                 resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
-  <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+  <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
 </alloy-sortable>
 ```
 
@@ -63,7 +63,8 @@ export * as alloy from '@tiavision/sinter-alloy';
 export type { Move, SortableText } from '@tiavision/sinter-alloy';
 ```
 
-With temper's Vite plugin, add the components to its `paths` so the icons they name (`grip-vertical`) are served:
+With temper's Vite plugin, add the components to its `paths` so the icons they name (the pickers' and the palette's;
+the drag handles' grip is temper's own) are served:
 `temper({ paths: [..., 'node_modules/@tiavision/sinter-alloy/sinter/components'], icons: { lucide: true } })`.
 
 ## `<alloy-sortable>`
@@ -110,7 +111,7 @@ sort value that puts the item between its new neighbours), `alloy.moved(list, mo
                              listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
                              nameOf: (c) => c.title, group: 'status', label: 'Tasks',
                              resource: 'cards', field: 'rank', save: '/api/cards/order' }">
-  <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+  <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
 </alloy-board>
 ```
 
@@ -252,7 +253,7 @@ It renders only the rows in view (and a few around them) between two spacers siz
 so the scrollbar is right, and keeps the first row in view where it was when rows change height or the list grows.
 Paging is sinter's: a resource in `append` mode is the list, and `end` (the view reached the last loaded row) is
 answered with `page(list, 'next')`. It is the scrolling box: give it a height. Before reaching for it, try temper's
-`data-lazy` (CSS only, every row stays in the page): it is enough up to a few thousand rows.
+`data-tm-lazy` (CSS only, every row stays in the page): it is enough up to a few thousand rows.
 
 ## The package
 

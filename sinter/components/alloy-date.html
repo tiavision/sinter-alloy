@@ -18,13 +18,13 @@
 -->
 <template data-sn-props="{ value: string; label: string; placeholder?: string; required?: boolean; min?: string; max?: string; marks?: readonly string[]; text?: Partial<DateText> }" data-sn-emits="{ change: string }">
   <div class="alloy-date" data-sn-state="{ open: false, today: '', invalid: false }">
-    <div data-field data-sn-ref="field">
+    <div data-tm-field data-sn-ref="field">
       <input type="text" data-sn-ref="input" autocomplete="off" spellcheck="false"
              data-sn-attr="{ value: value ? date(value, 'medium') : '', 'aria-label': label, placeholder, required, 'aria-invalid': invalid ? 'true' : null, 'aria-description': invalid ? (text?.invalid ?? 'Not a date') : null }">
-      <button type="button" data-variant="ghost" data-icon="calendar" data-sn-ref="toggle"
+      <button type="button" data-tm-variant="ghost" data-tm-icon="calendar" data-sn-ref="toggle"
               data-sn-attr="{ 'aria-expanded': open ? 'true' : 'false', 'aria-label': text?.open ?? 'Choose a date', 'aria-haspopup': 'dialog' }"></button>
     </div>
-    <div popover data-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
+    <div popover data-tm-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
       <template data-sn-if="today">
         <alloy-calendar data-sn-with="{ locale: $locale, today, value, min, max, marks, prev: text?.prev ?? 'Previous month', next: text?.next ?? 'Next month' }"></alloy-calendar>
       </template>

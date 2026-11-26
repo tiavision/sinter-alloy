@@ -6,21 +6,21 @@
 </head>
 <body>
   <!-- A date bound to state, with limits and marks; a range in the URL; a range the page applies itself; a month. -->
-  <main data-sn-state="{ due: '2026-11-10', period: { start: '', end: '' }, month: '2026-11' }" data-layout="stack" data-gap="md">
-    <section id="date" data-layout="stack" data-gap="xs">
+  <main data-sn-state="{ due: '2026-11-10', period: { start: '', end: '' }, month: '2026-11' }" data-tm-layout="stack" data-tm-gap="md">
+    <section id="date" data-tm-layout="stack" data-tm-gap="xs">
       <alloy-date data-sn-model="due" data-sn-with="{ label: 'Due date', min: '2026-01-01', max: '2027-12-31', marks: ['2026-11-12', '2026-11-20'] }"></alloy-date>
       <output id="due" data-sn-text="due"></output>
     </section>
-    <section id="url" data-layout="stack" data-gap="xs">
+    <section id="url" data-tm-layout="stack" data-tm-gap="xs">
       <alloy-range data-sn-with="{ params: ['start', 'end'], start: $url.start, end: $url.end, label: 'Period' }"></alloy-range>
       <output id="url-range" data-sn-text="($url.start ?? '') + '/' + ($url.end ?? '')"></output>
     </section>
-    <section id="state" data-layout="stack" data-gap="xs">
+    <section id="state" data-tm-layout="stack" data-tm-gap="xs">
       <alloy-range data-sn-with="{ start: period.start, end: period.end, label: 'Holiday' }"
                    data-sn-on-change="period = $event.detail"></alloy-range>
       <output id="period" data-sn-text="period.start + '/' + period.end"></output>
     </section>
-    <section id="month" data-layout="stack" data-gap="xs">
+    <section id="month" data-tm-layout="stack" data-tm-gap="xs">
       <alloy-month data-sn-model="month" data-sn-with="{ label: 'Month' }"></alloy-month>
       <output id="month-out" data-sn-text="month"></output>
     </section>

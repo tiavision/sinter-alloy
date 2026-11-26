@@ -18,7 +18,7 @@
   rendered move only when the view comes within half the overscan of their edge, so a slow scroll renders every few
   rows, not every frame. A page may pass a new `keyOf` function at every render; only a new `items` array counts.
 
-  Before reaching for it: temper's `data-lazy` (CSS content-visibility) keeps every row in the page, so find in page and
+  Before reaching for it: temper's `data-tm-lazy` (CSS content-visibility) keeps every row in the page, so find in page and
   the browser's own keys work, and is enough up to a few thousand rows. alloy-virtual is for more than that.
 
   - items, keyOf: the rows and their key. label: the list's accessible name. total: the whole list's size where the

@@ -1,5 +1,5 @@
 // Popovers the pickers open from their button, without ids (an id bound from data could clobber globals, SN503): the
-// button toggles it and is its source, which anchors it there (temper's data-menu opens under its anchor) and gives
+// button toggles it and is its source, which anchors it there (temper's data-tm-menu opens under its anchor) and gives
 // the focus back to the button when it closes.
 
 /** Opens `popover` from `source`, where the browser takes a source (Chromium 133+), else plainly. */

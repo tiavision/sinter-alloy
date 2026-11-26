@@ -69,7 +69,7 @@ test('keyboard: pick up, move down twice, drop: the row moves at once and the ne
   key(handle('a'), 'ArrowDown'); // past the end: stays last
   await tick(); flush();
   expect(status()).toBe('Alpha: position 3 of 3.');
-  expect(root.querySelector('li[data-al-key="c"]')!.getAttribute('data-al-line')).toBe('after');
+  expect(root.querySelector('li[data-al-key="c"]')!.getAttribute('data-tm-drop')).toBe('after');
   press(handle('a'));
   await tick(); flush();
   // optimistic: moved before the server has answered

@@ -17,23 +17,23 @@
 -->
 <template data-sn-props="{ start?: string | null; end?: string | null; label: string; params?: readonly [string, string]; min?: string; max?: string; marks?: readonly string[]; text?: Partial<RangeText> }" data-sn-emits="{ change: DateRange }">
   <div class="alloy-range" data-sn-state="{ open: false, today: '', first: '' }">
-    <button type="button" data-variant="outline" data-icon="calendar" data-sn-ref="toggle"
+    <button type="button" data-tm-variant="outline" data-tm-icon="calendar" data-sn-ref="toggle"
             data-sn-attr="{ 'aria-expanded': open ? 'true' : 'false', 'aria-haspopup': 'dialog', 'aria-label': label + ': ' + (start && end ? date(start, 'medium') + ' – ' + date(end, 'medium') : (text?.placeholder ?? 'Any time')) }"
             data-sn-text="start && end ? date(start, 'medium') + ' – ' + date(end, 'medium') : (text?.placeholder ?? 'Any time')"></button>
-    <div popover data-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
-      <div data-layout="row" data-gap="md" data-align="start">
-        <div class="al-presets" data-layout="stack" data-gap="xs">
-          <button type="button" data-variant="ghost" data-size="sm" data-al-preset="last7" data-sn-text="text?.last7 ?? 'Last 7 days'"></button>
-          <button type="button" data-variant="ghost" data-size="sm" data-al-preset="last30" data-sn-text="text?.last30 ?? 'Last 30 days'"></button>
-          <button type="button" data-variant="ghost" data-size="sm" data-al-preset="month" data-sn-text="text?.month ?? 'This month'"></button>
-          <button type="button" data-variant="ghost" data-size="sm" data-al-preset="lastMonth" data-sn-text="text?.lastMonth ?? 'Last month'"></button>
-          <button type="button" data-variant="ghost" data-size="sm" data-al-preset="clear" data-sn-text="text?.clear ?? 'Clear'"></button>
+    <div popover data-tm-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
+      <div data-tm-layout="row" data-tm-gap="md" data-tm-align="start">
+        <div class="al-presets" data-tm-layout="stack" data-tm-gap="xs">
+          <button type="button" data-tm-variant="ghost" data-tm-size="sm" data-al-preset="last7" data-sn-text="text?.last7 ?? 'Last 7 days'"></button>
+          <button type="button" data-tm-variant="ghost" data-tm-size="sm" data-al-preset="last30" data-sn-text="text?.last30 ?? 'Last 30 days'"></button>
+          <button type="button" data-tm-variant="ghost" data-tm-size="sm" data-al-preset="month" data-sn-text="text?.month ?? 'This month'"></button>
+          <button type="button" data-tm-variant="ghost" data-tm-size="sm" data-al-preset="lastMonth" data-sn-text="text?.lastMonth ?? 'Last month'"></button>
+          <button type="button" data-tm-variant="ghost" data-tm-size="sm" data-al-preset="clear" data-sn-text="text?.clear ?? 'Clear'"></button>
         </div>
-        <div data-layout="stack" data-gap="xs">
+        <div data-tm-layout="stack" data-tm-gap="xs">
           <template data-sn-if="today">
             <alloy-calendar data-sn-with="{ locale: $locale, today, start: first || start || undefined, end: first ? undefined : (end || undefined), min, max, marks, prev: text?.prev ?? 'Previous month', next: text?.next ?? 'Next month' }"></alloy-calendar>
           </template>
-          <span class="al-hint" data-caption role="status" data-sn-text="first ? (text?.pickEnd ?? 'Now pick the last day') : ''"></span>
+          <span class="al-hint" data-tm-caption role="status" data-sn-text="first ? (text?.pickEnd ?? 'Now pick the last day') : ''"></span>
         </div>
       </div>
     </div>

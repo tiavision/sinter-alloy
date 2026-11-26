@@ -27,7 +27,7 @@ Rules every alloy component follows:
    store, so its optimistic change, rollback and live sync are sinter's. The page names the resource and the URL and
    writes nothing else. Every such component still emits a typed, cancelable event (`move`): a page whose API has
    another shape prevents the component's save and sends its own request. Components never write page state.
-4. **Built for temper.** temper is a required peer. Components use temper's attributes (`data-variant`, `data-layout`, `data-icon`, …) and its
+4. **Built for temper.** temper is a required peer. Components use temper's attributes (`data-tm-variant`, `data-tm-layout`, `data-tm-icon`, …) and its
    tokens. The scoped CSS that remains is structural and uses `--tm-*` tokens only; each such rule is listed below as
    something temper could own instead, so the aim is no CSS at all.
    Wherever a component paints a surface (a card, a column, a lifted row), it sets the matching text token with it
@@ -87,10 +87,10 @@ reads clearly in an app's markup and cannot collide with an app's own components
 | Drag to a target | message → mailbox (mail sidebar) | Native HTML drag and drop: `draggable` rows, `drag` state, `data-sn-on-dragover/leave`, the mailbox row is an action with `data-sn-trigger="drop"`. | Works with a mouse only: no touch, no keyboard path (Move is in the reader's menu instead). |
 | Board / drag between lists | calendar (an event to another day or time) | Not possible; edit the event's date in the form. | A missing feature. |
 | Date input | event form, search page, mail search | Native `<input type="date">`, `time`, `datetime-local`. | Fine, except: they follow the browser's locale, not the page's (`/de/` pages show an English picker in an English browser); `datetime-local` for reminders is clumsy. |
-| Month/week picker | calendar header | A popover (`#month-picker`, `data-menu`) with its own grid, month and year selects, a second resource (`pickerGrid`, `/calendar?month=`) for the month view: about 45 lines of markup plus helpers. | Hand-built, calendar-only. |
+| Month/week picker | calendar header | A popover (`#month-picker`, `data-tm-menu`) with its own grid, month and year selects, a second resource (`pickerGrid`, `/calendar?month=`) for the month view: about 45 lines of markup plus helpers. | Hand-built, calendar-only. |
 | Date range | search (`start`, `end`), mail search (`after`, `before`) | Two separate date inputs bound to `$url`. | Nothing stops end < start; no presets. |
 | Command palette | — | None. Shortcuts are `data-shortcut` buttons (src/islands/common.ts). | A missing feature. |
-| Long lists | mail list, contacts, search results | Mail and search are paginated by the server (offset pages in `$url.page`, keyset for search). Contacts loads every contact and filters in the browser, grouped by letter. temper's `data-lazy` (content-visibility) is not used. | Fine at today's sizes; contacts grows with the address book. |
+| Long lists | mail list, contacts, search results | Mail and search are paginated by the server (offset pages in `$url.page`, keyset for search). Contacts loads every contact and filters in the browser, grouped by letter. temper's `data-tm-lazy` (content-visibility) is not used. | Fine at today's sizes; contacts grows with the address book. |
 | Resizable panes | mail: folders \| list \| reader | `<email-split>` (a component with a 34-line script), `clampWidth`/`keyWidth` helpers, keyboard handled on the tag, widths in persisted state (`mail-widths`), CSS for the handle. Used twice. | Bespoke; temper's backlog item 32 asks for it. |
 
 ## Ranking
@@ -103,7 +103,7 @@ By value to caley (what users get, what code goes away, how often it is used), a
 | 2 | **Split panes** (`alloy-split`) | Replaces `<email-split>` and its helpers with a reusable, accessible splitter; small and low-risk. Value is mostly code removed and consistency, so it ranks under the sortable despite being cheap. |
 | 3 | **Date, time and range pickers** (`alloy-date`, `alloy-range`, `alloy-month`) | Fixes the locale mismatch of native inputs on `/de/` pages, gives search a real range, and replaces the calendar's hand-built month picker. The largest of the five to do well (calendar math, locales, keyboard grid): it ranks below split panes on cost. **Q-D1** asks whether native inputs stay the default. |
 | 4 | **Command palette** (`alloy-palette`) | A new capability (go to a folder, contact, event, settings; run an action) with little code behind it, since sinter's `data-sn-options` already does the list keys. Lower than pickers because caley works without it; higher than virtual lists because it is cheap. |
-| 5 | **Virtualized list** (`alloy-virtual`) | caley paginates on the server and lists stay short; temper's `data-lazy` (CSS only) covers most of what remains (contacts). Build it when a list outgrows `data-lazy`, not before. |
+| 5 | **Virtualized list** (`alloy-virtual`) | caley paginates on the server and lists stay short; temper's `data-tm-lazy` (CSS only) covers most of what remains (contacts). Build it when a list outgrows `data-tm-lazy`, not before. |
 
 ---
 
@@ -116,7 +116,7 @@ By value to caley (what users get, what code goes away, how often it is used), a
 
 <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
                                 resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
-  <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+  <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
 </alloy-sortable>
 ```
 
@@ -178,7 +178,7 @@ handle exposes its resolved `src` and `order` (S10), they go: `items: tasks` alo
 
 **Keyboard and accessibility.**
 
-- The handle is a `<button>` (`data-icon="grip-vertical"`), labelled "Move {name}", with the instructions in
+- The handle is a `<button data-tm-handle>` (temper draws its grip), labelled "Move {name}", with the instructions in
   `aria-description`; `aria-pressed="true"` while its row is picked up.
 - Space or Enter picks up (a click with `detail === 0`, so the browser's own button activation is used), ArrowUp /
   ArrowDown / Home / End move the target, Space or Enter drops, Escape cancels (and does not close a dialog around
@@ -193,11 +193,12 @@ handle exposes its resolved `src` and `order` (S10), they go: `items: tasks` alo
   40px of its edges, Escape cancels.
 - Reduced motion: no transitions.
 
-**Styling.** temper attributes on the component's markup: `data-layout="stack"`/`"row"`, `data-variant="ghost"
-data-size="sm" data-icon="grip-vertical"` on the handle, `data-sr-only` on the live region. Remaining scoped CSS
-(about 20 lines, tokens only): list reset, `touch-action`/`cursor` on the handle, the lifted row's surface and shadow
-(`--tm-surface-raised`, `--tm-shadow-sm/lg`), the drop line (`--tm-accent`), hiding quiet handles on hover devices.
-Each is a temper candidate (T1–T3 below).
+**Styling.** temper attributes on the component's markup: `data-tm-layout="stack"`/`"row"`, `data-tm-handle`
+(`"quiet"` with the `quiet` prop: hidden until the row is hovered or focused, on devices that hover) and
+`data-tm-size="sm"` on the handle, `data-tm-lifted` and `data-tm-drop` on the moving row and the drop place,
+`data-tm-sr-only` on the live region. Scoped CSS left (four lines): the row's radius, the cursor on the whole list
+while dragging, and the lifted row following the pointer (`translateY` from state). The rest was alloy's until temper
+took it (T1–T3 below).
 
 **Runtime cost.** Script plus state machine: **2.2 kB gzip** minified (measured before the self-saving mode; that
 adds well under 1 kB: `save.ts` and the store calls); helpers (`order.ts`): 0.3 kB, foldable at build time. The markup is expanded per use like any component. Bundled with the pages that use it (the mail page),
@@ -249,7 +250,7 @@ another day) and messages dropped on a mailbox.
 - Columns are drop targets only (no reordering of columns, **Q-B1**). The calendar's time grid (a place that is a time,
   not an index) is not covered: a `placeOf` prop or a separate `alloy-schedule` (**Q-B2**). Message → mailbox drops
   (targets without cards) are not covered yet either.
-- Styling: temper attributes (`data-layout`, `data-scroll`, `data-caption`, `data-badge`, the ghost handle); scoped
+- Styling: temper attributes (`data-tm-layout`, `data-tm-scroll`, `data-tm-caption`, `data-tm-badge`, the ghost handle); scoped
   CSS with tokens for the column surface (`--tm-fill`), the card (`--tm-surface`, `--tm-border`), the lifted card, the
   drop line and the empty column's outline (T1–T3, plus a column surface).
 - Cost: **3.6 kB gzip** for the script with its state machine and the save (the sortable: 2.9 kB with its save).
@@ -325,7 +326,7 @@ The keys work from the focus the grid keeps in state, not from the element the b
 (before the focus has moved) still land on the right day. Escape closes (the popover's own), Alt+ArrowDown opens the
 date field's.
 
-**Styling.** temper's popover (`data-menu`), `data-field`, ghost and outline buttons; scoped CSS for the day buttons
+**Styling.** temper's popover (`data-tm-menu`), `data-tm-field`, ghost and outline buttons; scoped CSS for the day buttons
 (selected, between, today's ring, marks' dot, disabled) and a reset of temper's data-table look (stripes, row lines)
 on the grid's table (T5).
 
@@ -358,7 +359,7 @@ month's keys).
   on the backdrop closes. The list is a `listbox` of `option`s with their group and shortcut.
 - Found while building it: a `<dialog>`'s contents (and the refs inside it, and the dialog itself as a ref) are not
   rendered until it opens, so a component script reaches them by query after `showModal()` (S14).
-- Styling: temper's dialog, `data-field`, `kbd`; the top-anchored position a palette usually has needs a temper
+- Styling: temper's dialog, `data-tm-field`, `kbd`; the top-anchored position a palette usually has needs a temper
   variant (T6: temper's checker refuses an outer margin, TM206).
 - Cost: 2.2 kB gzip with the ranking.
 - Tests: ranking and recents; Chromium (Ctrl+K, the page's commands, ranking, following a link, clicking a page
@@ -390,7 +391,7 @@ virtual list is the other half: it renders only the loaded rows in view.
   first page renders as plain markup (embedded data), so nothing changes for the first paint.
 - Live updates insert and remove rows as usual (an `upsert` outside the loaded range becomes a reload of that page,
   sinter's rule); the script keeps the scroll anchored to the first visible key.
-- Not for numbered or keyset pages (they replace the list), and not instead of `data-lazy`: temper's CSS-only
+- Not for numbered or keyset pages (they replace the list), and not instead of `data-tm-lazy`: temper's CSS-only
   `content-visibility` keeps every row in the DOM (find in page works) and is the first choice up to a few thousand
   rows. caley needs neither yet (**Q-V1**).
 - Keyboard and a11y: `role="list"`, `aria-setsize`/`aria-posinset` on rows; `data-sn-options` must be able to mark a
@@ -439,18 +440,28 @@ components (split, pickers), `data-sn-options` (palette), resource `order` re-so
 optimistic-reorder idea rests on it: `store.ts` sorts layer values with the base), write-through, `<sn-event>`
 refresh, `data-sn-persist`.
 
-## What sinter-alloy needs from temper (no changes made to temper)
+## What sinter-alloy needed from temper
+
+**Status:** done in temper's `main` (tiaforge/temper#18, not released yet; alloy's `temper-next` branch builds against
+it). temper also moved every attribute to `data-tm-*` (alloy's markup follows). What alloy uses now:
+`data-tm-handle` (with `"quiet"`: temper draws the grip, so no icon has to be emitted for it) and `data-tm-lifted`
+/ `data-tm-drop` (`before`, `after`, `inside` for the board's empty column) in the sortable and the board; temper's
+focusable `role="separator"` in the split; `data-tm-plain` and the `aria-current="date"` ring in the calendar;
+`data-tm-sheet="top"` and the listbox options' look in the palette; the list reset (T3) everywhere. What alloy keeps
+of its own: following the pointer while a row is dragged (`data-al-lifted="pointer"`, a transform), the picked
+day's solid fill and the range's fill between two picks (a run across table rows is the script's), the
+keyboard-marked option (`data-sn-marked`), the cursors on the whole component while dragging.
 
 | | Need | Why |
 | --- | --- | --- |
 | T0 | **The Vite plugin reads sinter's `libraries`** (or a `libraries` option): checks their components and emits the icons they name | caley had to add `node_modules/@tiavision/sinter-alloy/sinter/components` to temper's `paths`; without it `grip-vertical` was missing from the CSS and the handles were empty. |
-| T1 | A **drag handle**: `data-handle` (grip icon, `cursor: grab`, `touch-action: none`, hidden-until-hover option) | removes the handle CSS from alloy |
-| T2 | **Moving states**: a lifted surface (raised background, shadow; e.g. `aria-pressed` on a row or `data-lifted`) and a **drop indicator** (`data-drop="before" \| "after" \| "inside"`: an accent line or outline) | sortable, board, mail drop targets (caley's `drag-target`/`drag-over` classes too) |
-| T3 | A list reset for `ul[role="list"][data-layout]` (no bullets, no padding) | every list component |
+| T1 | A **drag handle**: `data-tm-handle` (grip icon, `cursor: grab`, `touch-action: none`, hidden-until-hover option) | removes the handle CSS from alloy |
+| T2 | **Moving states**: a lifted surface (raised background, shadow; e.g. `aria-pressed` on a row or `data-tm-lifted`) and a **drop indicator** (`data-tm-drop="before" \| "after" \| "inside"`: an accent line or outline) | sortable, board, mail drop targets (caley's `drag-target`/`drag-over` classes too) |
+| T3 | A list reset for `ul[role="list"][data-tm-layout]` (no bullets, no padding) | every list component |
 | T4 | **Separator styling**: `[role="separator"][aria-orientation]` focusable hit area, hover and focus line (backlog item 32) | split panes |
 | T5 | **Calendar grid**: fixed 7 columns (backlog 41), `aria-current="date"` (42), range fill (start, middle, end of `aria-selected` runs) | pickers |
-| T6 | A **top-anchored dialog** (palette: an outer margin is TM206) and a marked-option style for `[data-sn-marked]` in `data-menu`/listbox | palette |
-| T7 | **`data-menu` popovers anchored to a `source`** (`showPopover({ source })`), not only to a `popovertarget` button | the pickers open their popovers without ids (S13) |
+| T6 | A **top-anchored dialog** (palette: an outer margin is TM206) and a marked-option style for `[data-sn-marked]` in `data-tm-menu`/listbox | palette |
+| T7 | **`data-tm-menu` popovers anchored to a `source`** (`showPopover({ source })`), not only to a `popovertarget` button | the pickers open their popovers without ids (S13) |
 | T8 | **A table that is a grid**: an opt-out of the data-table look (`table[role=grid]` without stripes and row lines) | the calendar resets it in scoped CSS |
 
 ---
@@ -481,7 +492,7 @@ Decide these before the component they belong to is built.
 - **Q-D2 — decided:** the URL (`params`) is the assumed shape; `change` for anything else. **Q-C1 — provisional:** the
   component listens for Ctrl/⌘+K; `keys: false` hands it to the page. **Q-C2 — provisional:** the page's commands, the
   prop's, and `GET <src>?q=`. **Q-D3 — provisional:** no time picker; native `type="time"`. **Q-V1 — built**, with
-  temper's `data-lazy` still the first choice.
+  temper's `data-tm-lazy` still the first choice.
 - **Q-D1 — Native date inputs.** Keep native inputs as the default and use `alloy-date` only where the locale or
   marks matter (calendar, search), or replace them everywhere for consistency?
 - **Q-D2 — Range binding:** the URL form (`params: ['start', 'end']`) is the assumed default; is a
@@ -491,5 +502,5 @@ Decide these before the component they belong to is built.
   document (zero setup, hidden behaviour)?
 - **Q-C2 — Palette data:** the page's own links and shortcuts plus `GET <src>?q=` → `[{ id, label, href, group? }]`;
   is that shape right for caley's search, or should results carry an action besides a link?
-- **Q-V1 — Virtual list:** build at all, or rely on temper's `data-lazy` until a list needs more? It needs nothing new
+- **Q-V1 — Virtual list:** build at all, or rely on temper's `data-tm-lazy` until a list needs more? It needs nothing new
   from sinter's pagination (`append` mode), only S9 to load pages without a page handler.

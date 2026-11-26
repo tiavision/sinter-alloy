@@ -13,7 +13,7 @@
                                  listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
                                  nameOf: (c) => c.title, group: 'status', label: 'Tasks',
                                  resource: 'cards', field: 'rank', save: '/api/cards/order' }">
-      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+      <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-board>
   </main>
 </body>

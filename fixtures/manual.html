@@ -11,7 +11,7 @@
   <main data-sn-state="{ mv: /** @type {Move | null} */ (null) }">
     <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
                     data-sn-on-move="mv = $event.detail; run('move-task')">
-      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+      <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-sortable>
     <span hidden id="move-task" data-sn-post="/api/tasks/move" data-sn-when="mv"
           data-sn-body="{ id: mv.key, after: mv.after }"

@@ -10,15 +10,15 @@
 -->
 <template data-sn-props="{ value: string; label: string; min?: string; max?: string; text?: Partial<MonthText> }" data-sn-emits="{ change: string }">
   <div class="alloy-month" data-sn-state="{ open: false, year: 0, focus: '', title: '', months: /** @type {{ month: string; name: string }[]} */ ([]), current: '' }">
-    <button type="button" data-variant="outline" data-icon="calendar" data-sn-ref="toggle"
+    <button type="button" data-tm-variant="outline" data-tm-icon="calendar" data-sn-ref="toggle"
             data-sn-attr="{ 'aria-expanded': open ? 'true' : 'false', 'aria-haspopup': 'dialog', 'aria-label': label + ': ' + (current || value) }"
             data-sn-text="current || value"></button>
-    <div popover data-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
-      <div data-layout="stack" data-gap="xs">
-        <div data-layout="row" data-gap="xs" data-align="center" data-wrap="none">
-          <button type="button" class="al-prev" data-variant="ghost" data-size="sm" data-icon="chevron-left" data-sn-attr="{ 'aria-label': text?.prev ?? 'Previous year' }"></button>
-          <strong class="al-title" data-grow aria-live="polite" data-sn-text="year || ''"></strong>
-          <button type="button" class="al-next" data-variant="ghost" data-size="sm" data-icon="chevron-right" data-sn-attr="{ 'aria-label': text?.next ?? 'Next year' }"></button>
+    <div popover data-tm-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
+      <div data-tm-layout="stack" data-tm-gap="xs">
+        <div data-tm-layout="row" data-tm-gap="xs" data-tm-align="center" data-tm-wrap="none">
+          <button type="button" class="al-prev" data-tm-variant="ghost" data-tm-size="sm" data-tm-icon="chevron-left" data-sn-attr="{ 'aria-label': text?.prev ?? 'Previous year' }"></button>
+          <strong class="al-title" data-tm-grow aria-live="polite" data-sn-text="year || ''"></strong>
+          <button type="button" class="al-next" data-tm-variant="ghost" data-tm-size="sm" data-tm-icon="chevron-right" data-sn-attr="{ 'aria-label': text?.next ?? 'Next year' }"></button>
         </div>
         <div class="al-months" role="grid" data-sn-attr="{ 'aria-label': String(year) }">
           <template data-sn-for="mo in months" data-sn-key="mo.month">

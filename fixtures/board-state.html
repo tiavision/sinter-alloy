@@ -11,7 +11,7 @@
                                  nameOf: (c) => c.title, group: 'status', label: 'Plan' }"
                  data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status')">
       <h2 slot="list" data-sn-text="$slot.list + ' (' + $slot.count + ')'"></h2>
-      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+      <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-board>
   </main>
 </body>

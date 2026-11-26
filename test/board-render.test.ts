@@ -47,7 +47,7 @@ async function mount(save: RouteResponse) {
 test('the columns render from the cards\' group; headers count them', async () => {
   const { root } = await mount({ status: 204 });
   expect(board(root)).toEqual({ todo: ['a', 'b'], doing: ['c'], done: [] });
-  expect([...root.querySelectorAll('[data-al-group] header [data-badge]')].map((b) => b.textContent)).toEqual(['2', '1', '0']);
+  expect([...root.querySelectorAll('[data-al-group] header [data-tm-badge]')].map((b) => b.textContent)).toEqual(['2', '1', '0']);
 });
 
 test('keyboard across columns: announced with the column, the card moves at once, the target column is saved', async () => {
@@ -60,11 +60,11 @@ test('keyboard across columns: announced with the column, the card moves at once
   key(handle('b'), 'ArrowRight');
   await tick(); flush();
   expect(status()).toBe('Beta: Doing, position 2 of 2.');
-  expect(root.querySelector('li[data-al-key="c"]')!.getAttribute('data-al-line')).toBe('after');
+  expect(root.querySelector('li[data-al-key="c"]')!.getAttribute('data-tm-drop')).toBe('after');
   key(handle('b'), 'ArrowUp');
   key(handle('b'), 'ArrowRight');
   await tick(); flush();
-  expect(root.querySelector('[data-al-group="done"] ul')!.getAttribute('data-al-line')).toBe('empty');
+  expect(root.querySelector('[data-al-group="done"] ul')!.getAttribute('data-tm-drop')).toBe('inside');
   key(handle('b'), 'ArrowLeft');
   press(handle('b'));
   await tick(); flush();

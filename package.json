@@ -52,7 +52,7 @@
   },
   "devDependencies": {
     "@tiaforge-ui/sinter": "0.22.1",
-    "@tiaforge-ui/temper": "0.4.0",
+    "@tiaforge-ui/temper": "github:tiaforge/temper#4a24228",
     "@types/node": "26.6.6",
     "jsdom": "31.0.1",
     "lucide-static": "^1.70.0",
