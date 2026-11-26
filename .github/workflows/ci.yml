@@ -1,4 +1,4 @@
-# Throwaway (branch webkit-url-check): the range test in WebKit, eight times, with sinter's fix (vendored tarball)
+# Throwaway (branch webkit-url-check): the browser suite in WebKit, eight times, with sinter's fix (vendored tarball)
 # and with released sinter, for the intermittent `$url` failure seen only on CI.
 name: CI
 
@@ -27,7 +27,7 @@ jobs:
       - if: matrix.sinter == 'released'
         run: npm install --no-save @tiaforge-ui/sinter@0.22.1
       - run: npx playwright install --with-deps webkit
-      - run: npx vitest run test/browser.test.ts -t "range:" --silent=false
+      - run: npx vitest run test/browser.test.ts --silent=false
         env:
           BROWSER: webkit
           RANGE_DEBUG: '1'
