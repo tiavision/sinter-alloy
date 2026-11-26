@@ -437,7 +437,12 @@ test('range: two picks write the URL\'s parameters; presets; Clear removes them'
   expect(await day('2026-11-14').evaluate((el) => el.classList.contains('between'))).toBe(true);
   const said: string[] = [];
   page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
+  await page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
   await day('2026-11-10').click();
+  if (process.env.RANGE_DEBUG) {
+    await page.waitForTimeout(500);
+    console.log('range navigation kept the document:', await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept === true));
+  }
   try {
     await expect.poll(() => page.locator('#url-range').textContent()).toBe('2026-11-10/2026-11-16');
   } catch (e) {
@@ -447,6 +452,7 @@ test('range: two picks write the URL\'s parameters; presets; Clear removes them'
       open: await page.locator('#url [popover]').evaluate((el) => el.matches(':popover-open')),
       picked: await page.$$eval('#url [data-al-day].picked, #url [data-al-day][aria-selected="true"]', (els) => els.map((x) => x.getAttribute('data-al-day'))),
       navigation: await page.evaluate(() => typeof (window as unknown as { navigation?: unknown }).navigation), said,
+      sameDocument: await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept === true),
     }));
     throw e;
   }
