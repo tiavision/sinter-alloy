@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a long list</title>
+</head>
+<body>
+  <!-- 2,000 people from an API, a hundred a page (sinter's append pagination); rows of two heights. -->
+  <sn-resource name="people" src="/api/people" key="id" type="Person[]" total="total" select="people"
+               paginate="{ append: { after: $item.id }, size: 100 }"></sn-resource>
+  <main data-layout="stack" data-gap="sm">
+    <div class="box tall">
+      <alloy-virtual data-sn-with="{ items: people, keyOf: (p) => p.id, label: 'People', estimate: 40, total: $meta.people.total }"
+                     data-sn-on-end="page(people, 'next')">
+        <div slot="item" class="person" data-pad="xs" data-sn-attr="{ 'data-tall': $slot.item.note ? '' : null }">
+          <strong data-sn-text="$slot.item.name"></strong>
+          <template data-sn-if="$slot.item.note"><p data-muted data-sn-text="$slot.item.note"></p></template>
+        </div>
+      </alloy-virtual>
+    </div>
+    <output id="loaded" data-sn-text="people.length"></output>
+  </main>
+</body>
+</html>

@@ -40,7 +40,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette', 'virtual'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -51,6 +51,15 @@ beforeAll(async () => {
       const json = (status: number, v: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(v)); };
       if (url.pathname === '/api/tasks' && req.method === 'GET') return json(200, tasks);
       if (url.pathname === '/api/cards' && req.method === 'GET') return json(200, cards);
+      if (url.pathname === '/api/people') {
+        const limit = Number(url.searchParams.get('limit') ?? 100), after = url.searchParams.get('after');
+        const from = after ? Number(after.slice(1)) + 1 : 0;
+        const people = Array.from({ length: Math.max(0, Math.min(limit, 2000 - from)) }, (_, i) => {
+          const n = from + i;
+          return { id: `p${n}`, name: `Person ${n}`, note: n % 7 === 0 ? 'A longer row: a note that makes this one taller than the others.' : null };
+        });
+        return json(200, { people, total: 2000 });
+      }
       if (url.pathname === '/api/commands') {
         const q = (url.searchParams.get('q') ?? '').toLowerCase();
         return json(200, [{ id: 'inv', label: 'Invoice #2405', href: '/split/', group: 'Messages' }, { id: 'team', label: 'Team sync', group: 'Events' }]
@@ -456,5 +465,33 @@ test('palette: a page button runs, a page command emits pick, the server\'s answ
   await page.keyboard.press('Escape');
   await expect.poll(() => dialog.evaluate((d) => (d as HTMLDialogElement).open)).toBe(false);
   await page.evaluate(() => localStorage.clear());
+  await check();
+});
+
+// ── long list ──
+
+test('virtual: only the rows in view render; scrolling loads the next pages and keeps the scrollbar right', async () => {
+  const { page, check } = await open('virtual/');
+  const list = page.locator('.alloy-virtual');
+  await expect.poll(() => page.locator('#loaded').textContent()).toBe('100');
+  const rendered = () => page.locator('.alloy-virtual [role="listitem"]').count();
+  expect(await rendered()).toBeLessThan(30);
+  const first = page.locator('.alloy-virtual [role="listitem"]').first();
+  expect([await first.getAttribute('aria-posinset'), await first.getAttribute('aria-setsize')]).toEqual(['1', '2000']);
+  // the scroll height stands for all 100 loaded rows, not the ones rendered
+  expect(await list.evaluate((el) => el.scrollHeight)).toBeGreaterThan(100 * 35);
+  // to the end of what is loaded: the next page comes (once), the window follows
+  await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await expect.poll(() => page.locator('#loaded').textContent()).toBe('200');
+  await expect.poll(async () => Number(await page.locator('.alloy-virtual [role="listitem"]').last().getAttribute('aria-posinset'))).toBeGreaterThan(90);
+  expect(await rendered()).toBeLessThan(30);
+  // scrolling a long way in steps renders the rows there, and asks for more as it goes
+  for (let n = 300; n <= 500; n += 100) {
+    await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expect.poll(() => page.locator('#loaded').textContent()).toBe(String(n));
+  }
+  // back to the top: the first row again
+  await list.evaluate((el) => (el.scrollTop = 0));
+  await expect.poll(() => page.locator('.alloy-virtual [role="listitem"]').first().getAttribute('aria-posinset')).toBe('1');
   await check();
 });

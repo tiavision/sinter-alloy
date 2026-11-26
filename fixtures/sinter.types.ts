@@ -13,3 +13,9 @@ export interface Card {
   status: string;
   rank: number;
 }
+
+export interface Person {
+  id: string;
+  name: string;
+  note: string | null;
+}
