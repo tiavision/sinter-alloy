@@ -63,9 +63,18 @@ export * as alloy from '@tiavision/sinter-alloy';
 export type { Move, SortableText } from '@tiavision/sinter-alloy';
 ```
 
-With temper's Vite plugin, add the components to its `paths` so the icons they name (the pickers' and the palette's;
-the drag handles' grip is temper's own) are served:
-`temper({ paths: [..., 'node_modules/@tiavision/sinter-alloy/sinter/components'], icons: { lucide: true } })`.
+With temper's Vite plugin, give it the components you use, for its check, for the icons they name (the pickers' and
+the palette's; the drag handles' grip is temper's own) and, with `prune`, for the rules they need (the components set
+temper's attributes through bindings, which temper reads only in the markup it is given; without them a pruned build
+loses the drag handles' `touch-action: none`, and a touch drag does nothing):
+
+```js
+const alloy = ['alloy-sortable'].map((c) => `node_modules/@tiavision/sinter-alloy/sinter/components/${c}.html`);
+temper({ paths: ['src', ...alloy], prune: { paths: ['src', ...alloy] }, icons: { lucide: true } })
+```
+
+Name only the components the app uses: temper's check asks for the CSS module each one needs (`drag.css` for the
+sortable and the board, `sheet.css` for the palette) when the app imports modules one by one.
 
 ## `<alloy-sortable>`
 
