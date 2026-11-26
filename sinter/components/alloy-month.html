@@ -1,0 +1,46 @@
+<!--
+  alloy-month: a month picker. Public.
+
+  <alloy-month data-sn-model="gridMonth" data-sn-with="{ label: 'Month' }"></alloy-month>
+
+  The value is `YYYY-MM`. The button shows the month in the page's language and opens a year of months (a popover) with
+  the year between a previous and a next button; picking a month sets it and closes it. Keys in the grid: the arrows
+  by a month (↑/↓ by three), PageUp/PageDown by a year, Home/End to the year's ends, Enter picks, Escape closes.
+  - value / change: the month (data-sn-model). label: the accessible name. min, max: months. text: the words (MonthText).
+-->
+<template data-sn-props="{ value: string; label: string; min?: string; max?: string; text?: Partial<MonthText> }" data-sn-emits="{ change: string }">
+  <div class="alloy-month" data-sn-state="{ open: false, year: 0, focus: '', title: '', months: /** @type {{ month: string; name: string }[]} */ ([]), current: '' }">
+    <button type="button" data-variant="outline" data-icon="calendar" data-sn-ref="toggle"
+            data-sn-attr="{ 'aria-expanded': open ? 'true' : 'false', 'aria-haspopup': 'dialog', 'aria-label': label + ': ' + (current || value) }"
+            data-sn-text="current || value"></button>
+    <div popover data-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
+      <div data-layout="stack" data-gap="xs">
+        <div data-layout="row" data-gap="xs" data-align="center" data-wrap="none">
+          <button type="button" class="al-prev" data-variant="ghost" data-size="sm" data-icon="chevron-left" data-sn-attr="{ 'aria-label': text?.prev ?? 'Previous year' }"></button>
+          <strong class="al-title" data-grow aria-live="polite" data-sn-text="year || ''"></strong>
+          <button type="button" class="al-next" data-variant="ghost" data-size="sm" data-icon="chevron-right" data-sn-attr="{ 'aria-label': text?.next ?? 'Next year' }"></button>
+        </div>
+        <div class="al-months" role="grid" data-sn-attr="{ 'aria-label': String(year) }">
+          <template data-sn-for="mo in months" data-sn-key="mo.month">
+            <button type="button" role="gridcell" data-sn-text="mo.name"
+                    data-sn-attr="{ 'data-al-month': mo.month, tabindex: mo.month === focus ? '0' : '-1', 'aria-selected': mo.month === value ? 'true' : 'false', 'aria-disabled': (!!min && mo.month < min) || (!!max && mo.month > max) ? 'true' : null }"
+                    data-sn-class="{ picked: mo.month === value }"></button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+<style>
+  .al-popover { padding: var(--tm-space-sm); }
+  .al-title { text-align: center; }
+  .al-months { display: grid; grid-template-columns: repeat(3, 4.5rem); gap: 2px; }
+  .al-months > button {
+    min-block-size: 2.25rem; padding: 0; border: 0; border-radius: var(--tm-radius); background: transparent;
+    color: var(--tm-text); font: inherit; cursor: pointer; text-transform: capitalize;
+  }
+  .al-months > button:hover { background: var(--tm-fill); }
+  .al-months > button:focus-visible { outline: 2px solid var(--tm-accent); outline-offset: 1px; }
+  .al-months > button.picked { background: var(--tm-accent); color: var(--tm-bg); font-weight: 600; }
+  .al-months > button[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+</style>

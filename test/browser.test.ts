@@ -40,7 +40,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -107,7 +107,7 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
     document.addEventListener('securitypolicyviolation', (e) => (window as unknown as { __v: string[] }).__v.push(`${e.violatedDirective} ${e.blockedURI}`));
   });
   await page.goto(base + path);
-  await page.waitForSelector('li[data-al-key], [role="separator"]');
+  await page.waitForSelector('li[data-al-key], [role="separator"], .alloy-date, .alloy-palette, .alloy-virtual');
   // the scripts have connected: a handle has its description, or (a split page) the page module has loaded
   await page.waitForFunction(() => !!document.querySelector('.al-handle[aria-description]') || !document.querySelector('.al-handle'));
   await page.waitForLoadState('networkidle');
@@ -318,4 +318,89 @@ test('split under style-src \'self\' alone: the first frame\'s size attribute is
   expect(violations).toEqual([]);
   await page.evaluate(() => localStorage.clear());
   await ctx.close();
+});
+
+// ── date, range and month pickers ──
+
+test('date: the value in the page\'s language, the calendar under the field, keys pick a day', async () => {
+  const { page, check } = await open('dates/');
+  const input = page.locator('#date input');
+  expect(await input.inputValue()).toBe('Nov 10, 2026');
+  const toggle = page.locator('#date button[aria-haspopup]');
+  await toggle.click();
+  const pop = page.locator('#date [popover]');
+  await expect.poll(() => pop.evaluate((el) => el.matches(':popover-open'))).toBe(true);
+  expect(await toggle.getAttribute('aria-expanded')).toBe('true');
+  // under its button
+  const t = (await toggle.boundingBox())!, b = (await pop.boundingBox())!;
+  expect(b.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
+  // the value's day has the focus; a Sunday-first American week; marks and today
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-10');
+  expect(await page.locator('#date th').first().textContent()).toBe('Su');
+  expect(await page.locator('#date [data-al-day="2026-11-12"]').evaluate((el) => el.classList.contains('marked'))).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.locator('#due').textContent()).toBe('2026-11-18');
+  expect(await input.inputValue()).toBe('Nov 18, 2026');
+  expect(await pop.evaluate((el) => el.matches(':popover-open'))).toBe(false);
+  // PageDown: the next month
+  await toggle.click();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-18');
+  await page.keyboard.press('PageDown');
+  await expect.poll(() => page.locator('#date .al-title').textContent()).toBe('December 2026');
+  await page.keyboard.press('Escape');
+  // typed in the language's order; a text that is no date is marked and changes nothing
+  await input.fill('12/24/2026');
+  await input.press('Tab');
+  await expect.poll(() => page.locator('#due').textContent()).toBe('2026-12-24');
+  await input.fill('soon');
+  await input.press('Tab');
+  expect(await input.getAttribute('aria-invalid')).toBe('true');
+  expect(await page.locator('#due').textContent()).toBe('2026-12-24');
+  await check();
+});
+
+test('range: two picks write the URL\'s parameters; presets; Clear removes them', async () => {
+  const { page, check } = await open('dates/');
+  const toggle = page.locator('#url button[aria-haspopup]');
+  expect(await toggle.textContent()).toBe('Any time');
+  await toggle.click();
+  const day = (iso: string) => page.locator(`#url [data-al-day="${iso}"]`);
+  // the grid opens on today\'s month: go to November 2026 by typing nothing, clicking the month buttons
+  const title = page.locator('#url .al-title');
+  for (let i = 0; i < 36 && (await title.textContent()) !== 'November 2026'; i++) {
+    await page.locator(`#url button.${(await title.textContent())! > 'November 2026' ? 'al-prev' : 'al-next'}`).click();
+  }
+  await day('2026-11-16').click();
+  expect(await page.locator('#url .al-hint').textContent()).toBe('Now pick the last day');
+  await day('2026-11-12').hover();
+  expect(await day('2026-11-14').evaluate((el) => el.classList.contains('between'))).toBe(true);
+  await day('2026-11-10').click();
+  await expect.poll(() => page.locator('#url-range').textContent()).toBe('2026-11-10/2026-11-16');
+  expect(new URL(page.url()).search).toBe('?start=2026-11-10&end=2026-11-16');
+  expect(await toggle.textContent()).toBe('Nov 10, 2026 – Nov 16, 2026');
+  await toggle.click();
+  await page.locator('#url [data-al-preset="clear"]').click();
+  await expect.poll(() => new URL(page.url()).search).toBe('');
+  // a range the page applies itself: a preset
+  await page.locator('#state button[aria-haspopup]').click();
+  await page.locator('#state [data-al-preset="last7"]').click();
+  await expect.poll(() => page.locator('#period').textContent()).toMatch(/^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/);
+  await check();
+});
+
+test('month: a year of months, keys move and pick', async () => {
+  const { page, check } = await open('dates/');
+  const toggle = page.locator('#month button[aria-haspopup]');
+  expect(await toggle.textContent()).toBe('November 2026');
+  await toggle.click();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-month'))).toBe('2026-11');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => page.locator('#month .al-title').textContent()).toBe('2027');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.locator('#month-out').textContent()).toBe('2027-01');
+  expect(await toggle.textContent()).toBe('January 2027');
+  await check();
 });

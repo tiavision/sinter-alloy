@@ -1,0 +1,36 @@
+<!--
+  alloy-date: a date field with a calendar. Public.
+
+  <alloy-date data-sn-model="draft.date" data-sn-with="{ label: 'Date' }"></alloy-date>
+
+  The value is an ISO date, `YYYY-MM-DD`, or '' (a calendar date: no time, no time zone, the same day for every reader).
+  The field shows it as the page's language writes it (sinter's `date(value, 'medium')`: in the first frame) and reads
+  what is typed in that language's order ("10.11.2026" on a German page, "11/10/2026" on an American one); a text that
+  is no date is marked invalid and changes nothing. The button opens the calendar under the field (a popover), on the
+  value's month; picking a day sets it and closes it. Weekday names and the week's first day follow the page's language,
+  not the browser's.
+
+  - value / change: the date (data-sn-model). label: the field's accessible name. placeholder, required.
+  - min, max: ISO dates; days outside are not offered. marks: ISO dates that get a dot (days with events).
+  - text: the words (DateText; English by default).
+  - Keys: in the field, Alt+ArrowDown opens the calendar; in the calendar, the arrows move by a day or a week,
+    PageUp/PageDown by a month (Shift: a year), Home/End to the week's ends, Enter picks, Escape closes.
+-->
+<template data-sn-props="{ value: string; label: string; placeholder?: string; required?: boolean; min?: string; max?: string; marks?: readonly string[]; text?: Partial<DateText> }" data-sn-emits="{ change: string }">
+  <div class="alloy-date" data-sn-state="{ open: false, today: '', invalid: false }">
+    <div data-field>
+      <input type="text" data-sn-ref="input" autocomplete="off" spellcheck="false"
+             data-sn-attr="{ value: value ? date(value, 'medium') : '', 'aria-label': label, placeholder, required, 'aria-invalid': invalid ? 'true' : null, 'aria-description': invalid ? (text?.invalid ?? 'Not a date') : null }">
+      <button type="button" data-variant="ghost" data-icon="calendar" data-sn-ref="toggle"
+              data-sn-attr="{ 'aria-expanded': open ? 'true' : 'false', 'aria-label': text?.open ?? 'Choose a date', 'aria-haspopup': 'dialog' }"></button>
+    </div>
+    <div popover data-menu class="al-popover" role="dialog" data-sn-ref="popover" data-sn-attr="{ 'aria-label': label }">
+      <template data-sn-if="today">
+        <alloy-calendar data-sn-with="{ locale: $locale, today, value, min, max, marks, prev: text?.prev ?? 'Previous month', next: text?.next ?? 'Next month' }"></alloy-calendar>
+      </template>
+    </div>
+  </div>
+</template>
+<style>
+  .al-popover { padding: var(--tm-space-sm); }
+</style>

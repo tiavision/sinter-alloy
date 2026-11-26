@@ -1,0 +1,62 @@
+<!--
+  alloy-calendar: the day grid of <alloy-date> and <alloy-range>. Internal.
+  A month of days (role="grid", the week starting on the language's first day), the month's name between a previous
+  and a next button. One day is in the tab order (the selected one, else today); the arrows move it by a day or a week,
+  PageUp/PageDown by a month (Shift: a year), Home/End to the week's ends; Enter or Space or a click picks it: `pick`.
+  The month follows the focus. Days outside min/max are aria-disabled; marked days carry a dot; today is
+  aria-current="date". With `start` (a range), the days between start and end (or the day under the pointer while the
+  end is not picked) are filled.
+  The script (alloy-calendar.ts) computes the grid and names into state from `locale`; the decisions are ../../calendar.ts.
+-->
+<template data-sn-props="{ locale: string; today: string; value?: string; start?: string; end?: string; min?: string; max?: string; marks?: readonly string[]; prev: string; next: string }" data-sn-emits="{ pick: string }">
+  <div class="alloy-calendar" data-layout="stack" data-gap="xs"
+       data-sn-state="{ month: '', focus: '', hover: '', title: '', names: /** @type {{ short: string; long: string }[]} */ ([]), weeks: /** @type {{ iso: string; day: number; inMonth: boolean }[][]} */ ([]), labels: /** @type {Record<string, string>} */ ({}) }">
+    <div data-layout="row" data-gap="xs" data-align="center" data-wrap="none">
+      <button type="button" class="al-prev" data-variant="ghost" data-size="sm" data-icon="chevron-left" data-sn-attr="{ 'aria-label': prev }"></button>
+      <strong class="al-title" data-grow aria-live="polite" data-sn-text="title"></strong>
+      <button type="button" class="al-next" data-variant="ghost" data-size="sm" data-icon="chevron-right" data-sn-attr="{ 'aria-label': next }"></button>
+    </div>
+    <table role="grid" data-sn-attr="{ 'aria-label': title }">
+      <thead>
+        <tr><template data-sn-for="n in names" data-sn-key="n.long"><th scope="col" data-sn-attr="{ abbr: n.long }" data-sn-text="n.short"></th></template></tr>
+      </thead>
+      <tbody>
+        <template data-sn-for="w in weeks" data-sn-key="w[0]?.iso ?? ''">
+          <tr>
+            <template data-sn-for="d in w" data-sn-key="d.iso">
+              <td role="gridcell"
+                  data-sn-let="{ last: end || (start && !end ? hover : ''), off: (!!min && d.iso < min) || (!!max && d.iso > max), picked: d.iso === value || d.iso === start || d.iso === end }"
+                  data-sn-attr="{ 'aria-selected': picked ? 'true' : 'false' }">
+                <button type="button" data-sn-text="d.day"
+                        data-sn-attr="{ 'data-al-day': d.iso, tabindex: d.iso === focus ? '0' : '-1', 'aria-label': labels[d.iso] ?? d.iso, 'aria-current': d.iso === today ? 'date' : null, 'aria-disabled': off ? 'true' : null, 'aria-pressed': picked ? 'true' : 'false' }"
+                        data-sn-class="{ out: !d.inMonth, picked, between: !!start && !!last && d.iso > (start < last ? start : last) && d.iso < (start < last ? last : start), marked: !!marks && marks.includes(d.iso) }"></button>
+              </td>
+            </template>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</template>
+<style>
+  .al-title { text-align: center; text-transform: capitalize; }
+  table { border-collapse: separate; border-spacing: 2px; margin-inline: auto; }
+  th { font-size: var(--tm-text-xs); font-weight: 500; color: var(--tm-text-muted); padding: 0; text-align: center; }
+  td { padding: 0; }
+  button[data-al-day] {
+    position: relative; inline-size: 2.25rem; block-size: 2.25rem; min-block-size: 0; padding: 0;
+    border: 0; border-radius: var(--tm-radius); background: transparent; color: var(--tm-text);
+    font: inherit; font-variant-numeric: tabular-nums; cursor: pointer;
+  }
+  button[data-al-day]:hover { background: var(--tm-fill); }
+  button[data-al-day]:focus-visible { outline: 2px solid var(--tm-accent); outline-offset: 1px; }
+  button.out { color: var(--tm-text-muted); }
+  button.between { background: color-mix(in oklab, var(--tm-accent) 18%, transparent); border-radius: 0; }
+  button.picked { background: var(--tm-accent); color: var(--tm-bg); font-weight: 600; }
+  button[aria-current='date']:not(.picked) { box-shadow: inset 0 0 0 1px var(--tm-accent); }
+  button[aria-disabled='true'] { color: var(--tm-text-muted); opacity: 0.45; cursor: default; background: transparent; }
+  button.marked::after {
+    content: ''; position: absolute; inset-block-end: 4px; inset-inline-start: calc(50% - 2px);
+    inline-size: 4px; block-size: 4px; border-radius: var(--tm-radius-full); background: currentColor;
+  }
+</style>

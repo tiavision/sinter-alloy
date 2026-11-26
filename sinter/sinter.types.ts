@@ -69,3 +69,50 @@ export interface BoardError {
   move: BoardMove;
   error: unknown;
 }
+
+/** A day of a calendar grid (alloy-date, alloy-range). */
+export interface CalendarDay {
+  iso: string;
+  day: number;
+  inMonth: boolean;
+}
+
+/** A weekday's names, in the page's language. */
+export interface WeekdayName {
+  short: string;
+  long: string;
+}
+
+/** The words of <alloy-date>: its button, the month buttons, a typed date that is not one. */
+export interface DateText {
+  open: string;
+  prev: string;
+  next: string;
+  invalid: string;
+}
+
+/** The words of <alloy-range>: its button with no range, the presets, the month buttons, the hint while picking. */
+export interface RangeText {
+  placeholder: string;
+  prev: string;
+  next: string;
+  pickEnd: string;
+  clear: string;
+  last7: string;
+  last30: string;
+  month: string;
+  lastMonth: string;
+}
+
+/** A range: two ISO dates, `''` for none. */
+export interface DateRange {
+  start: string;
+  end: string;
+}
+
+/** The words of <alloy-month>. */
+export interface MonthText {
+  open: string;
+  prev: string;
+  next: string;
+}
