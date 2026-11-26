@@ -69,7 +69,7 @@
   li { position: relative; border-radius: var(--tm-radius); }
   .al-handle { touch-action: none; cursor: grab; flex: none; }
   .dragging, .dragging * { cursor: grabbing; user-select: none; }
-  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); box-shadow: var(--tm-shadow-sm); }
+  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); color: var(--tm-text); box-shadow: var(--tm-shadow-sm); }
   li[data-al-lifted='pointer'] { transform: translateY(var(--al-dy, 0)); box-shadow: var(--tm-shadow-lg); }
   li[data-al-line]::after {
     content: ''; position: absolute; inset-inline: 0; block-size: 2px; border-radius: var(--tm-radius-full);

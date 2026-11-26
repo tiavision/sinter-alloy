@@ -27,6 +27,9 @@ Rules every alloy component follows:
 4. **Built for temper.** temper is a required peer. Components use temper's attributes (`data-variant`, `data-layout`, `data-icon`, …) and its
    tokens. The scoped CSS that remains is structural and uses `--tm-*` tokens only; each such rule is listed below as
    something temper could own instead, so the aim is no CSS at all.
+   Wherever a component paints a surface (a card, a column, a lifted row), it sets the matching text token with it
+   (`--tm-surface` with `--tm-text`): inherited text colour is the host's, and a host whose reset colours `body` (the
+   claude.ai artifact viewer's) otherwise left dark ink on the board's dark cards.
 5. **Keyboard and screen reader first.** Every pointer interaction has a keyboard path, and each state change is
    announced (a live region in the component) or reflected in ARIA.
 6. **Small.** A component's script is measured (gzip, minified, its pure modules included) and listed here. Pure
@@ -298,7 +301,7 @@ moves the focus in the grid and parses typing.
 
 **Keyboard and a11y.** The field is a combobox (`aria-haspopup="dialog"`); the popover is a `[popover]` (temper's
 `data-menu` placement) holding a `role="grid"` with roving focus: arrows by day/week, PageUp/PageDown by month
-(Shift: year), Home/End to week start/end, Enter selects, Escape closes and returns focus. Today is
+(Shift: year), Home/End to week start/end, Enter selects, Escape closes and returns focus. The month heading sits centred between the previous and next buttons. Today is
 `aria-current="date"`, the selection `aria-selected`, disabled days `aria-disabled`. Month and year headings are
 live. Week starts and names come from `Intl` for `$locale`, so `/de/` pages show German, Monday-first calendars
 whatever the browser's language.

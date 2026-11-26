@@ -68,17 +68,17 @@
   .al-columns { padding-block-end: var(--tm-space-xs); }
   .al-column {
     flex: none; inline-size: var(--al-column, 17rem); max-inline-size: 85vw;
-    background: var(--tm-fill); border-radius: var(--tm-radius);
+    background: var(--tm-fill); color: var(--tm-text); border-radius: var(--tm-radius);
   }
   ul { list-style: none; margin: 0; padding: 0; min-block-size: 3rem; border-radius: var(--tm-radius); }
   ul[data-al-line='empty'] { outline: 2px dashed var(--tm-accent); outline-offset: -2px; }
   li {
-    position: relative; background: var(--tm-surface); border: 1px solid var(--tm-border);
+    position: relative; background: var(--tm-surface); color: var(--tm-text); border: 1px solid var(--tm-border);
     border-radius: var(--tm-radius); padding: var(--tm-space-xs);
   }
   .al-handle { touch-action: none; cursor: grab; flex: none; }
   .dragging, .dragging * { cursor: grabbing; user-select: none; }
-  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); box-shadow: var(--tm-shadow-sm); }
+  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); color: var(--tm-text); box-shadow: var(--tm-shadow-sm); }
   li[data-al-lifted='pointer'] { transform: translate(var(--al-dx, 0), var(--al-dy, 0)) rotate(1deg); box-shadow: var(--tm-shadow-lg); }
   li[data-al-line]::after {
     content: ''; position: absolute; inset-inline: 0; block-size: 2px; border-radius: var(--tm-radius-full);
