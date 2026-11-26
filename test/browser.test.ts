@@ -138,8 +138,9 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
   await page.waitForFunction(() => !!document.querySelector('.al-handle[aria-description]') || !document.querySelector('.al-handle'));
   await page.waitForLoadState('networkidle');
   return { page, check: async () => {
-    expect(await page.evaluate(() => (window as unknown as { __v: string[] }).__v)).toEqual([]);
-    expect(errors).toEqual([]);
+    const violations = await page.evaluate(() => (window as unknown as { __v: string[] }).__v);
+    expect(violations, `CSP violations:\n${violations.join('\n')}`).toEqual([]);
+    expect(errors, `console or page errors:\n${errors.join('\n')}`).toEqual([]);
     await ctx.close();
   } };
 }
