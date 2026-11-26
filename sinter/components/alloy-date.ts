@@ -9,12 +9,12 @@ export class AlloyDate extends AlloyDateComponent {
 
   connected() {
     const signal = this.#stop.signal, { input, popover } = this.refs;
-    openFrom(this.refs.toggle, popover, signal, (open) => (this.state.open = open));
+    openFrom(this.refs.toggle, popover, signal, (open) => (this.state.open = open), this.refs.field);
     this.state.today = todayIso();
     input.addEventListener('change', () => this.#typed(), { signal });
     input.addEventListener('input', () => (this.state.invalid = false), { signal });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown' && e.altKey) { e.preventDefault(); show(popover, this.refs.toggle); }
+      if (e.key === 'ArrowDown' && e.altKey) { e.preventDefault(); show(popover, this.refs.field); }
     }, { signal });
     popover.addEventListener('toggle', (e) => {
       if ((e as ToggleEvent).newState === 'open') {

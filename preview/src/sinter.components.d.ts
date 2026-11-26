@@ -15,7 +15,7 @@ declare module '*/alloy-date.html' {
   type DateText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').DateText;
   const Base: typeof import('@tiaforge-ui/sinter/runtime/components').Component;
   /** the base of `@tiavision/sinter-alloy/sinter/components/alloy-date.ts`: props, events, refs and state as `alloy-date.html` declares them */
-  export class AlloyDateComponent extends Base<{ value: string; label: string; placeholder?: string; required?: boolean; min?: string; max?: string; marks?: readonly string[]; text?: Partial<DateText> }, { change: string }, { input: HTMLElementTagNameMap["input"]; toggle: HTMLElementTagNameMap["button"]; popover: HTMLElementTagNameMap["div"] }, { open: boolean; today: string; invalid: boolean }> {}
+  export class AlloyDateComponent extends Base<{ value: string; label: string; placeholder?: string; required?: boolean; min?: string; max?: string; marks?: readonly string[]; text?: Partial<DateText> }, { change: string }, { field: HTMLElementTagNameMap["div"]; input: HTMLElementTagNameMap["input"]; toggle: HTMLElementTagNameMap["button"]; popover: HTMLElementTagNameMap["div"] }, { open: boolean; today: string; invalid: boolean }> {}
 }
 declare module '*/alloy-month.html' {
   type MonthText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').MonthText;

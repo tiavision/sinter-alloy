@@ -1,5 +1,5 @@
-// The preview page (preview/index.html): the built components live over the page's state, the designed ones as
-// temper mockups. `npm run preview:build` writes preview/dist with relative URLs, so it can be served from any path.
+// The preview page (preview/index.html): every component live over the page's state. `npm run preview:build`
+// writes preview/dist with relative URLs, so it can be served from any path.
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import sinter from '@tiaforge-ui/sinter/vite';

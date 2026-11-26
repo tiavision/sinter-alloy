@@ -13,3 +13,4 @@ body { background: var(--tm-bg); color: var(--tm-text); }
 /* split panes: the live one needs a box with a height */
 .split-box { block-size: 13rem; border: 1px solid var(--tm-border); border-radius: var(--tm-radius); overflow: hidden; }
 .list-box { block-size: 18rem; border: 1px solid var(--tm-border); border-radius: var(--tm-radius); overflow: hidden; }
+.list-box [role='listitem'] > [data-pad] { padding-inline: var(--tm-space-sm); }

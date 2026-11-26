@@ -13,8 +13,8 @@ first used by [caley](https://github.com/tiavision/caley).
 | [`<alloy-palette>`](#alloy-palette) | built: a Ctrl+K command palette with no setup |
 | [`<alloy-virtual>`](#alloy-virtual) | built: a long list over sinter's `append` pagination |
 
-**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): every
-component running live. Its source is `preview/` (`npm run preview:build`). The
+**[Preview](https://tiavision.github.io/sinter-alloy/)**: every component running live, built from `preview/` and
+published to GitHub Pages on every push to `main`. The screenshots below are taken from it (`npm run screenshots`). The
 design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN.md).
 
 ```html
@@ -61,6 +61,11 @@ With temper's Vite plugin, add the components to its `paths` so the icons they n
 
 ## `<alloy-sortable>`
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/sortable-dark.png">
+  <img src="docs/screenshots/sortable-light.png" width="454" alt="A sortable list of folders, one row picked up with the keyboard and a line where it will drop">
+</picture>
+
 | | |
 | --- | --- |
 | `items` | the rows, in their order |
@@ -85,6 +90,11 @@ Helpers: `alloy.reorder(list, move)`, `alloy.keysAfter(list, move, keyOf)`, `all
 sort value that puts the item between its new neighbours), `alloy.moved(list, move, keyOf)`.
 
 ## `<alloy-board>`
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/board-dark.png">
+  <img src="docs/screenshots/board-light.png" width="900" alt="A board with three columns of cards: To do, Doing, Done">
+</picture>
 
 ```html
 <sn-resource name="cards" src="/api/cards" key="id" order="rank" type="Card[]"></sn-resource>
@@ -125,6 +135,11 @@ is outlined, the board scrolls sideways near its edges. Helpers: `alloy.columnAf
 
 ## `<alloy-split>`
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/split-dark.png">
+  <img src="docs/screenshots/split-light.png" width="900" alt="Two panes, folders and a note, with the separator between them focused">
+</picture>
+
 ```html
 <alloy-split data-sn-with="{ name: 'mail-sidebar', initial: 220, min: 140, max: 400, label: 'Folders width' }">
   <nav slot="start">…</nav>
@@ -154,6 +169,16 @@ alone needs `style-src-attr 'unsafe-inline'` for it, or the panes start at 30% u
 
 ## Dates
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/date-dark.png">
+  <img src="docs/screenshots/date-light.png" width="580" alt="A date field with its calendar open under it, in English, the week starting on Sunday">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/range-dark.png">
+  <img src="docs/screenshots/range-light.png" width="438" alt="A range picker: presets beside a calendar, the range filling from the 9th to the day under the pointer">
+</picture>
+
 ```html
 <alloy-date data-sn-model="draft.due" data-sn-with="{ label: 'Due date', min: '2026-01-01', marks: busyDays }"></alloy-date>
 <alloy-range data-sn-with="{ params: ['start', 'end'], start: $url.start, end: $url.end, label: 'Period' }"></alloy-range>
@@ -180,6 +205,11 @@ ends, Enter picks, Escape closes; Alt+ArrowDown in the date field opens it. Each
 
 ## `<alloy-palette>`
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/palette-dark.png">
+  <img src="docs/screenshots/palette-light.png" width="608" alt="The command palette: a search field and the page's commands, grouped, with a shortcut">
+</picture>
+
 ```html
 <alloy-palette data-sn-with="{ label: 'Commands', src: '/api/search/commands' }"></alloy-palette>
 ```
@@ -197,6 +227,11 @@ ignored); an empty field shows the recent picks first. Picking one follows its l
 `pick` for a page's own command. Keys: the arrows through the list, Enter, Escape. `keys: false` turns the shortcut off.
 
 ## `<alloy-virtual>`
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/virtual-dark.png">
+  <img src="docs/screenshots/virtual-light.png" width="900" alt="A long list of contacts, rows 244 to 250 of 5,000">
+</picture>
 
 ```html
 <sn-resource name="contacts" src="/contacts" key="id" paginate="{ append: { after: $item.id }, size: 100 }"></sn-resource>
@@ -232,7 +267,8 @@ sinter/
   order.ts                         the helpers, pure
   sinter.helpers.ts, sinter.types.ts, index.ts
 fixtures/                          pages for `sinter check` and the browser tests
-preview/                           the preview page (`npm run preview:build`)
+preview/                           the preview page (`npm run preview:build`), on GitHub Pages
+scripts/screenshots.mjs            the README's screenshots from the preview (`npm run screenshots`)
 test/                              unit tests, `sinter check`, render tests with the real script, Chromium tests
 docs/DESIGN.md                     the design of the whole library
 ```

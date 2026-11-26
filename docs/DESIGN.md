@@ -2,7 +2,7 @@
 
 Status: every component is built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form),
 `<alloy-board>`, `<alloy-split>`, `<alloy-date>`/`<alloy-range>`/`<alloy-month>`, `<alloy-palette>`, `<alloy-virtual>`.
-The open questions below were answered with the recommendations, marked *provisional* where they are not settled. A preview page (`preview/`, published at https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)
+The open questions below were answered with the recommendations, marked *provisional* where they are not settled. A preview page (`preview/`, published at https://tiavision.github.io/sinter-alloy/)
 shows them all live. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
 the component it belongs to is built.
 

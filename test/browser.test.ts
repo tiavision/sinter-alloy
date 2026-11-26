@@ -352,9 +352,10 @@ test('date: the value in the page\'s language, the calendar under the field, key
   const pop = page.locator('#date [popover]');
   await expect.poll(() => pop.evaluate((el) => el.matches(':popover-open'))).toBe(true);
   expect(await toggle.getAttribute('aria-expanded')).toBe('true');
-  // under its button
-  const t = (await toggle.boundingBox())!, b = (await pop.boundingBox())!;
-  expect(b.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
+  // under the field, starting where it starts (not under the button at its end)
+  const f = (await page.locator('#date [data-field]').boundingBox())!, b = (await pop.boundingBox())!;
+  expect(b.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
+  expect(Math.abs(b.x - f.x)).toBeLessThan(3); // (it was ~250 px right of it, under the button)
   // the value's day has the focus; a Sunday-first American week; marks and today
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-10');
   expect(await page.locator('#date th').first().textContent()).toBe('Su');
@@ -372,6 +373,8 @@ test('date: the value in the page\'s language, the calendar under the field, key
   await page.keyboard.press('PageDown');
   await expect.poll(() => page.locator('#date .al-title').textContent()).toBe('December 2026');
   await page.keyboard.press('Escape');
+  // the focus goes back to the button that opened it
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-haspopup'))).toBe('dialog');
   // typed in the language's order; a text that is no date is marked and changes nothing
   await input.fill('12/24/2026');
   await input.press('Tab');

@@ -37,7 +37,8 @@
     "check": "sinter check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "preview:build": "vite build --config preview/vite.config.ts"
+    "preview:build": "node scripts/self-link.mjs && vite build --config preview/vite.config.ts",
+    "screenshots": "npm run preview:build && node scripts/screenshots.mjs"
   },
   "peerDependencies": {
     "@tiaforge-ui/sinter": ">=0.22.0 <1",
