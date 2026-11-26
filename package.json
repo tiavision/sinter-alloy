@@ -51,8 +51,8 @@
     "access": "public"
   },
   "devDependencies": {
-    "@tiaforge-ui/sinter": "0.22.1",
-    "@tiaforge-ui/temper": "github:tiaforge/temper#4a24228",
+    "@tiaforge-ui/sinter": "github:tiaforge/sinter#f4f0d425d87ce373b0edfb0642be38ebcd2ee4dd",
+    "@tiaforge-ui/temper": "github:tiaforge/temper#4a242282c60b2aa0d078e5bdc634647639c75d51",
     "@types/node": "26.6.6",
     "jsdom": "31.0.1",
     "lucide-static": "^1.70.0",
