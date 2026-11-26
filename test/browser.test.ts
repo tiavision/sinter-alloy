@@ -336,6 +336,13 @@ test('split under style-src \'self\' alone: the first frame\'s size attribute is
 
 // ── date, range and month pickers ──
 
+/** How far the furthest of the buttons' text is from its button's centre, in px (temper's menu rows start-align). */
+const offCentre = (pop: import('playwright').Locator, sel: string) => pop.evaluate((el, sel) => Math.max(0, ...[...el.querySelectorAll(sel)].map((b) => {
+  const r = document.createRange(); r.selectNodeContents(b);
+  const t = r.getBoundingClientRect(), bb = b.getBoundingClientRect();
+  return Math.abs(t.left + t.width / 2 - (bb.left + bb.width / 2));
+})), sel);
+
 test('date: the value in the page\'s language, the calendar under the field, keys pick a day', async () => {
   const { page, check } = await open('dates/');
   const input = page.locator('#date input');
@@ -352,6 +359,7 @@ test('date: the value in the page\'s language, the calendar under the field, key
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-10');
   expect(await page.locator('#date th').first().textContent()).toBe('Su');
   expect(await page.locator('#date [data-al-day="2026-11-12"]').evaluate((el) => el.classList.contains('marked'))).toBe(true);
+  expect(await offCentre(pop, 'button[data-al-day]')).toBeLessThan(1);
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -410,6 +418,7 @@ test('month: a year of months, keys move and pick', async () => {
   expect(await toggle.textContent()).toBe('November 2026');
   await toggle.click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-month'))).toBe('2026-11');
+  expect(await offCentre(page.locator('#month [popover]'), '.al-months > button')).toBeLessThan(1);
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.locator('#month .al-title').textContent()).toBe('2027');

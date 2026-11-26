@@ -1,7 +1,7 @@
 # @tiavision/sinter-alloy
 
 Opinionated components for [sinter](https://github.com/tiaforge/sinter): the part of a UI that needs a script
-because it cannot be written as attributes. Built for [temper](https://github.com/tiaforge/temper) (a required peer),
+because it cannot be written as attributes. Seven of them, all built. Built for [temper](https://github.com/tiaforge/temper) (a required peer),
 first used by [caley](https://github.com/tiavision/caley).
 
 | Component | Status |
@@ -9,12 +9,12 @@ first used by [caley](https://github.com/tiavision/caley).
 | [`<alloy-sortable>`](#alloy-sortable) | built: a list reordered with a pointer (mouse, touch, pen) or the keyboard |
 | [`<alloy-board>`](#alloy-board) | built: cards moved within and between columns |
 | [`<alloy-split>`](#alloy-split) | built: two panes and a separator that keeps its size |
-| [`<alloy-date>`, `<alloy-range>`, `<alloy-month>`](#planned) | designed: dates in the page's language, a range in the URL |
-| [`<alloy-palette>`](#planned) | designed: a Ctrl+K command palette |
-| [`<alloy-virtual>`](#planned) | designed: a long list over sinter's `append` pagination |
+| [`<alloy-date>`, `<alloy-range>`, `<alloy-month>`](#dates) | built: dates in the page's language, a range in the URL |
+| [`<alloy-palette>`](#alloy-palette) | built: a Ctrl+K command palette with no setup |
+| [`<alloy-virtual>`](#alloy-virtual) | built: a long list over sinter's `append` pagination |
 
-**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): the three
-built components live, and mockups of the designed ones. Its source is `preview/` (`npm run preview:build`). The
+**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): every
+component running live. Its source is `preview/` (`npm run preview:build`). The
 design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN.md).
 
 ```html
@@ -152,18 +152,65 @@ mouse, touch or pen; double-click puts it back to `initial`.
 CSP: sinter writes the size into the first frame's HTML as a `style` attribute. A page served with `style-src 'self'`
 alone needs `style-src-attr 'unsafe-inline'` for it, or the panes start at 30% until the page module applies the size.
 
-## Planned
+## Dates
 
-Designed in [docs/DESIGN.md](docs/DESIGN.md), not built yet; the preview shows a mockup of each. Each assumes one shape,
-as the sortable does, so a page writes the tag and nothing else.
+```html
+<alloy-date data-sn-model="draft.due" data-sn-with="{ label: 'Due date', min: '2026-01-01', marks: busyDays }"></alloy-date>
+<alloy-range data-sn-with="{ params: ['start', 'end'], start: $url.start, end: $url.end, label: 'Period' }"></alloy-range>
+<alloy-month data-sn-model="month" data-sn-with="{ label: 'Month' }"></alloy-month>
+```
 
-- **`<alloy-date>`, `<alloy-range>`, `<alloy-month>`**: a date field with a calendar popover, a range bound to two URL
-  parameters (`params: ['start', 'end']`, ISO dates), a month picker; weekday names and the week's first day from the
-  page's language, whatever the browser's.
-- **`<alloy-palette>`**: opens with Ctrl+K; lists the page's own links and shortcut buttons with no setup, and asks
-  `GET <src>?q=` for more (`[{ id, label, href, group }]`).
-- **`<alloy-virtual>`**: renders only the rows in view of a resource paginated with sinter's `append` mode, and loads
-  the next page near the end. temper's `data-lazy` is the first choice before it.
+Values are ISO strings: a date `YYYY-MM-DD` (a calendar date: no time, no time zone, the same day for every reader),
+a month `YYYY-MM`. Everything follows the page's language, not the browser's: the field shows the date as the
+language writes it (sinter's `date()`, so it is in the first frame) and reads typed dates in its order ("10.11.2026"
+in German, "11/10/2026" in American English), the week starts on its first day, the names are its own.
+
+- `<alloy-date>`: a field and a calendar in a popover under it. `value`/`change` (data-sn-model), `label`,
+  `placeholder`, `required`, `min`, `max`, `marks` (days with a dot). A typed text that is no date is marked invalid
+  and changes nothing.
+- `<alloy-range>`: a button showing the range and a calendar where the first pick starts the range and the second
+  ends it (the days between fill as the pointer moves), with presets (last 7 and 30 days, this and last month) and
+  Clear. The assumed shape is the URL's: with `params`, a range is written to those two query parameters through
+  sinter's `navigate()` (the page's resources that read them reload); without, the page handles `change`
+  (`{ start, end }`).
+- `<alloy-month>`: a year of months in a popover. `value`/`change`, `min`, `max`.
+
+Keys in a calendar: the arrows by a day or a week, PageUp/PageDown by a month (Shift: a year), Home/End to the week's
+ends, Enter picks, Escape closes; Alt+ArrowDown in the date field opens it. Each picker takes `text` for its words.
+
+## `<alloy-palette>`
+
+```html
+<alloy-palette data-sn-with="{ label: 'Commands', src: '/api/search/commands' }"></alloy-palette>
+```
+
+Ctrl+K (⌘K on a Mac) or its button opens it. With no setup it lists the page's own navigation (`nav a[href]`) and
+buttons with a shortcut (`data-shortcut`, `aria-keyshortcuts`), as they are when it opens; a page adds its own
+`commands`, and with `src` the server's answers as the user types:
+
+```
+GET /api/search/commands?q=rec      →      [{ "id", "label", "href"?, "group"?, "keywords"?, "shortcut"? }]
+```
+
+Typing ranks them (every word must match: at the start, at a word's start, inside, or as an abbreviation; accents
+ignored); an empty field shows the recent picks first. Picking one follows its link, clicks the page's button, or emits
+`pick` for a page's own command. Keys: the arrows through the list, Enter, Escape. `keys: false` turns the shortcut off.
+
+## `<alloy-virtual>`
+
+```html
+<sn-resource name="contacts" src="/contacts" key="id" paginate="{ append: { after: $item.id }, size: 100 }"></sn-resource>
+<alloy-virtual data-sn-with="{ items: contacts, keyOf: (c) => c.id, label: 'Contacts', total: $meta.contacts.total }"
+               data-sn-on-end="page(contacts, 'next')">
+  <contact-row slot="item" data-sn-with="{ contact: $slot.item }"></contact-row>
+</alloy-virtual>
+```
+
+It renders only the rows in view (and a few around them) between two spacers sized from the rows' measured heights,
+so the scrollbar is right, and keeps the first row in view where it was when rows change height or the list grows.
+Paging is sinter's: a resource in `append` mode is the list, and `end` (the view reached the last loaded row) is
+answered with `page(list, 'next')`. It is the scrolling box: give it a height. Before reaching for it, try temper's
+`data-lazy` (CSS only, every row stays in the page): it is enough up to a few thousand rows.
 
 ## The package
 
@@ -174,6 +221,11 @@ sinter/
   components/alloy-board.html/.ts  the board, the same way
   components/alloy-split.html/.ts  the split panes
   split.ts                         the split's decisions, pure
+  components/alloy-date, -range, -month (.html/.ts), internal/alloy-calendar (the day grid)
+  calendar.ts                      dates, grids, names, parsing and keys, pure
+  popover.ts                       the pickers' popovers, opened from their button
+  components/alloy-palette.html/.ts, palette.ts (ranking, the page's own commands)
+  components/alloy-virtual.html/.ts, virtual.ts (the window)
   board.ts                         the board's state machine, pure
   sortable.ts                      the state machine, pure
   save.ts                          the round trip's body and answer, pure

@@ -19,7 +19,7 @@
     Enter picks, Escape closes.
 -->
 <template data-sn-props="{ label: string; src?: string; commands?: readonly PaletteCommand[]; keys?: 'mod+k' | false; text?: Partial<PaletteText> }" data-sn-emits="{ pick: PaletteCommand }">
-  <div class="alloy-palette" data-sn-state="{ q: '', results: /** @type {PaletteCommand[]} */ ([]), loading: false, mac: false }">
+  <div class="alloy-palette" data-sn-state="{ q: '', results: /** @type {{ id: string; label: string; group?: string; keywords?: string; href?: string; shortcut?: string }[]} */ ([]), loading: false, mac: false }">
     <button type="button" data-variant="outline" data-icon="search" data-sn-ref="open"
             data-sn-attr="{ 'aria-keyshortcuts': keys === false ? null : (mac ? 'Meta+K' : 'Control+K') }">
       <span data-sn-text="text?.open ?? 'Search commands'"></span>
@@ -49,7 +49,7 @@
   </div>
 </template>
 <style>
-  .al-dialog { inline-size: min(36rem, calc(100vw - 2 * var(--tm-space-md))); margin-block-start: 12vh; padding: var(--tm-space-sm); }
+  .al-dialog { inline-size: min(36rem, calc(100vw - 2 * var(--tm-space-md))); padding: var(--tm-space-sm); }
   ul { list-style: none; margin: 0; padding: 0; max-block-size: min(24rem, 60vh); overflow: auto; }
   li { border-radius: var(--tm-radius); cursor: pointer; color: var(--tm-text); }
   li:hover, li[data-sn-marked] { background: var(--tm-fill); }

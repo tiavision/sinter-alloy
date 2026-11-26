@@ -40,11 +40,16 @@
 </template>
 <style>
   .al-title { text-align: center; text-transform: capitalize; }
-  table { border-collapse: separate; border-spacing: 2px; margin-inline: auto; }
+  /* a grid, not a data table: none of temper's table look (row lines, stripes, hover rows) */
+  table { border-collapse: separate; border-spacing: 2px; margin-inline: auto; inline-size: auto; background: none; }
+  tr, tbody tr:nth-child(n), tbody tr:hover { background: none; }
+  thead, tbody, tr, th, td { border: 0; background: none; box-shadow: none; }
   th { font-size: var(--tm-text-xs); font-weight: 500; color: var(--tm-text-muted); padding: 0; text-align: center; }
   td { padding: 0; }
   button[data-al-day] {
-    position: relative; inline-size: 2.25rem; block-size: 2.25rem; min-block-size: 0; padding: 0;
+    /* temper lays out buttons in a data-menu as start-aligned rows: centre the number */
+    position: relative; display: grid; place-items: center; justify-content: center; text-align: center;
+    inline-size: 2.25rem; block-size: 2.25rem; min-block-size: 0; padding: 0;
     border: 0; border-radius: var(--tm-radius); background: transparent; color: var(--tm-text);
     font: inherit; font-variant-numeric: tabular-nums; cursor: pointer;
   }

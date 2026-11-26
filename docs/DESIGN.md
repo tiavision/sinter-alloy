@@ -1,9 +1,9 @@
 # sinter-alloy: design
 
-Status: draft. Built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form), `<alloy-board>` and
-`<alloy-split>`.
-Designed: the rest. A preview page (`preview/`, published at https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)
-shows the built ones live and mockups of the designed ones. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
+Status: every component is built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form),
+`<alloy-board>`, `<alloy-split>`, `<alloy-date>`/`<alloy-range>`/`<alloy-month>`, `<alloy-palette>`, `<alloy-virtual>`.
+The open questions below were answered with the recommendations, marked *provisional* where they are not settled. A preview page (`preview/`, published at https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)
+shows them all live. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
 the component it belongs to is built.
 
 ## What sinter-alloy is
@@ -290,70 +290,85 @@ another day) and messages dropped on a mailbox.
   coming back, Enter, a bound value), Chromium (mouse drag with clamping, the stored size after a reload, double-click,
   a model-bound reversed split, a column split, a touch drag, and the page under `style-src 'self'` alone).
 
-## 3. Date, time and range pickers
+## 3. Date, range and month pickers (built)
 
-Three components over one pure calendar module (`calendar.ts`: the month grid for a locale's first weekday, ISO
-dates as strings, no time zones: a date picker picks a calendar date):
+Three public pickers over one internal day grid (`internal/alloy-calendar`) and one pure module (`calendar.ts`: ISO
+dates computed in UTC, the month grid, names and the first weekday from `Intl`, typed-date parsing, the keys,
+range picks, presets):
 
-- `<alloy-date data-sn-model="draft.date" data-sn-with="{ label, min?, max?, required?, marks? }">` — a text field
-  (typed dates parsed in the page's locale) with a calendar popover. Value: `'YYYY-MM-DD'` or `''`.
-- `<alloy-range data-sn-with="{ params: ['start', 'end'], label, presets? }">` — two dates and one calendar that
-  selects a range (first click start, second end; end < start swaps), with presets ("Last 7 days", "This month").
-  The assumed shape is the URL's: ISO dates in those two query parameters, written as a `$url` model would (a
-  history entry per pick), so a search page's resource that reads `$url.start` and `$url.end` reloads by itself.
-  For state instead of the URL: `data-sn-model` on a `{ start, end }` value (**Q-D2**).
-- `<alloy-month data-sn-model="gridMonth" data-sn-with="{ marks }">` — the calendar's month/week picker as a
-  component, `marks` (days with events) from the page's resource; replaces caley's hand-built `#month-picker`.
-- Time: `<alloy-time>` is not planned. Native `type="time"` is good on every platform; a time list (15-minute
-  steps, typed times) for the event form is **Q-D3**.
+- `<alloy-date data-sn-model="draft.date" data-sn-with="{ label, min?, max?, marks?, required?, placeholder? }">` — a
+  field and a calendar in a popover under it. The field's text is sinter's `date(value, 'medium')`, so it is in the
+  first frame in the page's language; typing is read in that language's order of day, month and year (from
+  `Intl.DateTimeFormat#formatToParts`), a two-digit year in this century, or an ISO date; a text that is no date (or
+  outside min/max) is `aria-invalid` and changes nothing.
+- `<alloy-range data-sn-with="{ params: ['start', 'end'], start: $url.start, end: $url.end, label }">` — the URL is the
+  assumed shape (decided Q-D2): with `params` the script writes both parameters through sinter's `navigate()` (a
+  history entry; the page stays; resources that read them reload), '' removing one; without, the page applies the
+  cancelable `change` (`{ start, end }`). One calendar: the first pick starts the range, the second ends it (an
+  earlier day becomes the start), the days between fill as the pointer moves; presets (last 7 and 30 days, this and
+  last month) and Clear.
+- `<alloy-month data-sn-model="month">` — a year of months; arrows by a month (↑/↓ by three), PageUp/PageDown by a year.
+- Time: not built (Q-D3, provisional: the native `type="time"` stays).
 
-**First frame.** The field and the popover's grid for the current value render as markup (the grid is a
-`data-sn-for` over a helper, `alloy.monthGrid(value, $locale)`, which folds or renders early). The script only
-moves the focus in the grid and parses typing.
+**First frame.** The field and the buttons render as markup; the grids are in closed popovers and are computed by the
+script when it connects. **Language.** `$locale` where the app has languages, else the `lang` of the page (an app
+without sinter's languages has an empty `$locale`, found while testing).
 
-**Keyboard and a11y.** The field is a combobox (`aria-haspopup="dialog"`); the popover is a `[popover]` (temper's
-`data-menu` placement) holding a `role="grid"` with roving focus: arrows by day/week, PageUp/PageDown by month
-(Shift: year), Home/End to week start/end, Enter selects, Escape closes and returns focus. The month heading sits centred between the previous and next buttons. Today is
-`aria-current="date"`, the selection `aria-selected`, disabled days `aria-disabled`. Month and year headings are
-live. Week starts and names come from `Intl` for `$locale`, so `/de/` pages show German, Monday-first calendars
-whatever the browser's language.
+**Keyboard and a11y.** The popover is a `[popover]` with `role="dialog"`, opened from its button as the popover's
+`source` (which anchors it there; no ids, see S13), `aria-expanded` on the button. The day grid is a `role="grid"`
+table with roving focus: arrows by a day or a week, PageUp/PageDown by a month (Shift: a year), Home/End to the week's
+ends, Enter or Space picks; the month follows the focus; today is `aria-current="date"`, picked days `aria-selected`,
+days outside min/max `aria-disabled`; each day's button is labelled with its full date ("Tuesday, November 10, 2026").
+The keys work from the focus the grid keeps in state, not from the element the browser has focused, so fast keys
+(before the focus has moved) still land on the right day. Escape closes (the popover's own), Alt+ArrowDown opens the
+date field's.
 
-**Styling.** temper: the popover (`data-menu`), ghost buttons for days, `data-caption` for weekday names. Needs:
-a 7-column grid (backlog item 41), `aria-current="date"` styling (item 42), a selected-range fill (T5).
+**Styling.** temper's popover (`data-menu`), `data-field`, ghost and outline buttons; scoped CSS for the day buttons
+(selected, between, today's ring, marks' dot, disabled) and a reset of temper's data-table look (stripes, row lines)
+on the grid's table (T5).
 
-**Cost.** About 3 kB gzip for the three (shared module), mostly `Intl` glue and the grid's keyboard.
+**Cost.** Calendar grid 1.8 kB gzip, each picker 1.1–1.2 kB (with its share of `calendar.ts`).
 
-## 4. Command palette: `<alloy-palette>`
+**Tests.** The calendar module (dates across month ends and summer time, German/British/American weeks, grids,
+parsing in three orders, keys, ranges, presets); Chromium (the date's text and grid in the language, the popover under
+its button, keys, typing, an invalid text; a range into the URL with the fill while picking, Clear, a preset; the
+month's keys).
+
+## 4. Command palette: `<alloy-palette>` (built)
 
 ```html
-<alloy-palette data-sn-with="{ src: '/api/search/commands', label: m.palette_label() }"></alloy-palette>
+<alloy-palette data-sn-with="{ label: 'Commands', src: '/api/search/commands' }"></alloy-palette>
 ```
 
-- Opens with Mod+K (and `/` optionally) from anywhere (a key filter on `<body>` that the component's docs give the
-  page, `data-sn-on-keydown-mod-k="openDialog('palette')"`, or the component listens on its document: **Q-C1**).
-- A modal `<dialog>` with a search field and a list. The list keys are sinter's own `data-sn-options` (a combobox:
-  arrows, Enter, Escape, `aria-activedescendant`), so the script only does what sinter does not: fuzzy ranking
-  (a pure `rank(query, commands)` helper, so it renders early and is tested without a DOM), opening on the shortcut,
-  restoring focus, and remembering recent picks (localStorage, per-viewer).
-- Zero setup: it builds its commands from the page itself, every link of the navigation (`nav a[href]`) and every
-  button with a `data-shortcut` (its label and key), so `<alloy-palette></alloy-palette>` is useful as is. A page adds
-  its own commands as data, `{ id, label, group?, keywords?, href?, shortcut?, icon? }`; a link swaps like any link, an
-  action is the page's (the component emits `pick`).
-- Remote results, the assumed shape: `src="/search/commands"` → `GET <src>?q=<text>` answering
-  `[{ id, label, href, group? }]`, requested through sinter's request layer as the user types (latest wins, a pause
-  of 150 ms). caley would answer it from its search (folders, contacts, events) (**Q-C2**).
-- a11y: `role="combobox"` field (sinter adds it with `data-sn-options`), `role="listbox"` grouped with
-  `role="group"`/`aria-labelledby`, shortcuts in `aria-keyshortcuts` and shown as `<kbd>`.
-- Styling: temper's dialog and `data-menu` list; needs a top-anchored dialog variant and a marked-option style for
-  `[data-sn-marked]` (T6).
-- Cost: about 1.5 kB gzip (ranking included).
+- Opens with Ctrl+K / ⌘K, listened for by the component on its document (decided Q-C1, provisional: zero setup;
+  `keys: false` turns it off for a page that binds its own), or its button, which shows the shortcut.
+- Commands: the page's own, collected when it opens (its navigation's links, "Go to"; its buttons with `data-shortcut`
+  or `aria-keyshortcuts`, "Actions"; hidden, inert and disabled ones left out), the `commands` prop, and with `src`
+  the server's answers: `GET <src>?q=` → `[{ id, label, href?, group?, keywords?, shortcut? }]` through sinter's request
+  layer, after 150 ms, the latest winning (decided Q-C2, provisional).
+- Ranking (`palette.ts`, pure): every word of the query must match a label (at its start, at a word's start, inside,
+  or as letters in order), keywords count, accents are folded; an empty field shows the recent picks first (the last
+  five, kept whole in localStorage, so a server's answer comes back too).
+- Picking: a link is followed with sinter's `navigate()`, a page button is clicked (and gets the focus back), anything
+  else emits `pick` for the page. The dialog closes and the focus goes back where it was.
+- Keys and a11y: the field is sinter's `data-sn-options` combobox (arrows, `aria-activedescendant`, Enter clicks the
+  marked option); Escape arrives as `sn-dismiss` (the combobox keeps the key while its list shows) and closes; a click
+  on the backdrop closes. The list is a `listbox` of `option`s with their group and shortcut.
+- Found while building it: a `<dialog>`'s contents (and the refs inside it, and the dialog itself as a ref) are not
+  rendered until it opens, so a component script reaches them by query after `showModal()` (S14).
+- Styling: temper's dialog, `data-field`, `kbd`; the top-anchored position a palette usually has needs a temper
+  variant (T6: temper's checker refuses an outer margin, TM206).
+- Cost: 2.2 kB gzip with the ranking.
+- Tests: ranking and recents; Chromium (Ctrl+K, the page's commands, ranking, following a link, clicking a page
+  button, a page command's `pick`, the server's answers, recents, Escape).
 
-## 5. Virtualized list: `<alloy-virtual>`
+## 5. Virtualized list: `<alloy-virtual>` (built)
 
 ```html
 <sn-resource name="contacts" src="/contacts" paginate="{ append: { after: $item.id }, size: 50 }"></sn-resource>
 
-<alloy-virtual data-sn-with="{ items: contacts, keyOf: (c) => c.id, estimate: 56, label, resource: 'contacts' }">
+<alloy-virtual data-sn-with="{ items: contacts, keyOf: (c) => c.id, estimate: 56, label, total: $meta.contacts.total }"
+               data-sn-on-end="page(contacts, 'next')">
   <contact-row slot="item" data-sn-with="{ contact: $slot.item }"></contact-row>
 </alloy-virtual>
 ```
@@ -365,8 +380,8 @@ virtual list is the other half: it renders only the loaded rows in view.
 
 - Rendering: a `data-sn-for` over `items.slice(start, end)` (state the script writes from the scroll position and
   measured heights) between two spacers sized from state. Rows are keyed, so sinter reuses them while scrolling.
-- Loading: near the end of what is loaded it asks for the next page itself, through the store (with `resource`;
-  S9 would make it the handle's), or emits `end` for `data-sn-on-end="page(contacts, 'next')"`. It stops when
+- Loading: near the end of what is loaded it emits `end` (once per list length), answered by the page with
+  `data-sn-on-end="page(contacts, 'next')"`; S9 would let it page by itself. It stops when
   `$meta.contacts.hasNext` is false. `$meta.contacts.total` (when the server sends it) sizes the scrollbar for the
   rows not loaded yet and gives `aria-setsize`.
 - First frame: sinter already reserves `size` rows' space for a paginated list before its data arrives, and the
@@ -378,7 +393,13 @@ virtual list is the other half: it renders only the loaded rows in view.
   rows. caley needs neither yet (**Q-V1**).
 - Keyboard and a11y: `role="list"`, `aria-setsize`/`aria-posinset` on rows; `data-sn-options` must be able to mark a
   row not rendered yet (S6).
-- Cost: about 1.5 kB gzip.
+- The window (`virtual.ts`, pure): offsets from measured heights (`estimate` for the rest), a binary search for the
+  first and last rows in view, `overscan` rows each side, the spacers' heights. A ResizeObserver remeasures rows that
+  change height and the box; the first row in view keeps its place across those changes and when rows are added.
+- Keys: the list is focusable and scrolls with the browser's own keys; marking rows not rendered (S6) is not done.
+- Cost: 1.1 kB gzip.
+- Tests: the window; Chromium over 2,000 people in pages of 100 (a screenful rendered, the scroll height for all
+  loaded rows, pages loading as the view reaches the end, `aria-posinset`/`aria-setsize`, back to the top).
 
 ---
 
@@ -398,6 +419,9 @@ virtual list is the other half: it renders only the loaded rows in view.
 | S10 | **The store handle exposes its resolved `src` and its `order` field** | Then `save` defaults to `<src>/order` and `field` to `order`, and the sortable needs only `items`. Today the handle has `name`, `key`, `meta`, `get`, `merge`, … but neither. | after the spike |
 | S11 | **Persisted state with a computed key, restored by the early script** (`data-sn-persist` whose key reads a prop) | The split keeps its size under `name`; restored by its script, after the first paint, the panes can move once on load. `data-sn-persist` takes a literal key, so a component used twice cannot persist each use. | split |
 | S12 | **First-frame styles without a `style` attribute** (e.g. sinter's per-page stylesheet for initial style bindings, or setting them from the early script) | A style binding's initial value is written as a `style` attribute, which `style-src 'self'` blocks: the split needs `style-src-attr 'unsafe-inline'` for a right first frame. | split |
+| S13 | **Unique ids for a component's own elements** (an id the build derives per use, for `aria-controls`, `popovertarget`, `aria-activedescendant`) | An `id` bound from data is SN503 (DOM clobbering) and a literal one breaks with two uses: the pickers open their popovers from the script (`showPopover({ source })`) instead of `popovertarget`, and the palette can only be used once per page (its list's literal id). | pickers, palette |
+| S14 | **Refs inside a `<dialog>`**, or a documented way for a script to reach a deferred dialog's contents | A dialog's contents render when it opens, and its refs (the dialog itself included) are not set: the palette finds its dialog and field by query. | palette |
+| S15 | **`$locale` in an app without languages** (the base language, or the page's `lang`) | It is empty there; the pickers fall back to the `lang` attribute. | pickers |
 
 Already sufficient: slots that pass data (`Slot<T>`), component scripts with refs and state, `data-sn-model` on
 components (split, pickers), `data-sn-options` (palette), resource `order` re-sorting merged items (the whole
@@ -414,7 +438,9 @@ refresh, `data-sn-persist`.
 | T3 | A list reset for `ul[role="list"][data-layout]` (no bullets, no padding) | every list component |
 | T4 | **Separator styling**: `[role="separator"][aria-orientation]` focusable hit area, hover and focus line (backlog item 32) | split panes |
 | T5 | **Calendar grid**: fixed 7 columns (backlog 41), `aria-current="date"` (42), range fill (start, middle, end of `aria-selected` runs) | pickers |
-| T6 | A **top-anchored dialog** (palette) and a marked-option style for `[data-sn-marked]` in `data-menu`/listbox | palette |
+| T6 | A **top-anchored dialog** (palette: an outer margin is TM206) and a marked-option style for `[data-sn-marked]` in `data-menu`/listbox | palette |
+| T7 | **`data-menu` popovers anchored to a `source`** (`showPopover({ source })`), not only to a `popovertarget` button | the pickers open their popovers without ids (S13) |
+| T8 | **A table that is a grid**: an opt-out of the data-table look (`table[role=grid]` without stripes and row lines) | the calendar resets it in scoped CSS |
 
 ---
 
@@ -441,6 +467,10 @@ Decide these before the component they belong to is built.
   separate `alloy-schedule` for time grids? Recommendation: try one; split if the props get conditional.
 - **Q-SP1 — decided:** `aria-controls` from a `controls` prop. **Q-SP2:** a narrow-screen mode (stack the panes below a
   width), or leave narrow layouts to the page as caley's mail page does now?
+- **Q-D2 — decided:** the URL (`params`) is the assumed shape; `change` for anything else. **Q-C1 — provisional:** the
+  component listens for Ctrl/⌘+K; `keys: false` hands it to the page. **Q-C2 — provisional:** the page's commands, the
+  prop's, and `GET <src>?q=`. **Q-D3 — provisional:** no time picker; native `type="time"`. **Q-V1 — built**, with
+  temper's `data-lazy` still the first choice.
 - **Q-D1 — Native date inputs.** Keep native inputs as the default and use `alloy-date` only where the locale or
   marks matter (calendar, search), or replace them everywhere for consistency?
 - **Q-D2 — Range binding:** the URL form (`params: ['start', 'end']`) is the assumed default; is a

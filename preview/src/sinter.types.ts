@@ -1,1 +1,1 @@
-export type { Move, BoardMove } from '@tiavision/sinter-alloy';
+export type { Move, BoardMove, DateRange } from '@tiavision/sinter-alloy';
