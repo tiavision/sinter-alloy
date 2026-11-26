@@ -1,0 +1,3 @@
+/* The fixture pages' own rules (the browser test's app imports them): a split needs a box with a height. */
+.box { block-size: 12rem; border: 1px solid var(--tm-border); }
+.box.tall { block-size: 20rem; }

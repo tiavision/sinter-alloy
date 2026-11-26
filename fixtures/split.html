@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: split panes</title>
+</head>
+<body>
+  <!-- A split that keeps its own size (name), one whose size is the page's state (data-sn-model), a column split with the
+       sized pane at the end. -->
+  <main data-sn-state="{ width: 300 }" data-layout="stack" data-gap="md">
+    <div id="own" class="box">
+      <alloy-split data-sn-with="{ name: 'fixture', initial: 200, min: 120, max: 360, label: 'Folders width', controls: 'folders' }">
+        <nav slot="start" id="folders">Folders</nav>
+        <section slot="end">Messages</section>
+      </alloy-split>
+    </div>
+    <div id="model" class="box">
+      <alloy-split data-sn-model="width" data-sn-with="{ initial: 300, min: 200, max: 500, label: 'List width', reverse: true }">
+        <section slot="start">Reader</section>
+        <aside slot="end">List</aside>
+      </alloy-split>
+    </div>
+    <output id="width" data-sn-text="width"></output>
+    <div id="column" class="box tall">
+      <alloy-split data-sn-with="{ initial: 120, min: 60, max: 240, label: 'Preview height', direction: 'column', reverse: true }">
+        <section slot="start">Editor</section>
+        <section slot="end">Preview</section>
+      </alloy-split>
+    </div>
+  </main>
+</body>
+</html>

@@ -11,7 +11,7 @@ const linked = (name: string) => realpathSync(join(PKG, 'node_modules', name));
 export function app(head = ''): { root: string; remove: () => void } {
   const root = mkdtempSync(join(tmpdir(), 'sinter-alloy-app-'));
   const files: Record<string, string> = {
-    'src/styles.ts': "import '@tiaforge-ui/temper/all.css';\nimport 'virtual:temper-icons.css';\n",
+    'src/styles.ts': "import '@tiaforge-ui/temper/all.css';\nimport 'virtual:temper-icons.css';\nimport '../fixtures.css';\n",
   };
   for (const f of readdirSync(join(PKG, 'fixtures'))) {
     const s = readFileSync(join(PKG, 'fixtures', f), 'utf8');

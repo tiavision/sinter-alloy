@@ -1,8 +1,9 @@
 # sinter-alloy: design
 
-Status: draft. Built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form) and `<alloy-board>`.
+Status: draft. Built: `<alloy-sortable>` (used in caley's mail sidebar in its page-wired form), `<alloy-board>` and
+`<alloy-split>`.
 Designed: the rest. A preview page (`preview/`, published at https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)
-shows the two built ones live and mockups of the designed ones. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
+shows the built ones live and mockups of the designed ones. Open questions are marked **Q-…** and gathered at the end; each needs a decision before
 the component it belongs to is built.
 
 ## What sinter-alloy is
@@ -255,28 +256,39 @@ another day) and messages dropped on a mailbox.
   save, cards in state with custom headers) and Chromium (a drag to another column with the line and the saved state
   after a reload, a drag into an empty column, keyboard over state; strict CSP, no errors).
 
-## 2. Split panes: `<alloy-split>`
+## 2. Split panes: `<alloy-split>` (built)
 
 ```html
-<alloy-split data-sn-with="{ name: 'mail-sidebar', min: 140, max: 400, initial: 220, label: m.mail_aria_folders() }">
+<alloy-split data-sn-with="{ name: 'mail-sidebar', initial: 220, min: 140, max: 400, label: m.mail_aria_folders() }">
   <aside slot="start">…</aside>
   <section slot="end">…</section>
 </alloy-split>
 ```
 
-- No API to assume: the opinion is that it owns the layout of its two panes (slots `start` and `end`) and keeps its
-  size itself (persisted under `name`, as `data-sn-persist` would), so the page writes no state, styles and helpers.
-  caley's `mail-widths` state, `clampWidth`/`keyWidth` and the handle CSS go. A second form for a page that keeps the
-  size in its own state is the separator alone with `data-sn-model` (sinter's custom input contract).
-- Props: `name` (the storage key), `initial`, `min`, `max` (px), `step?` (keyboard, default 16), `label`,
-  `orientation?: 'vertical' | 'horizontal'`, `reverse?` (the `end` pane is the sized one).
-- Keyboard and a11y: `role="separator"`, `tabindex="0"`, `aria-orientation`, `aria-valuenow/min/max`,
-  `aria-controls` (the sized pane's id, **Q-SP1**), `aria-label`. Arrow keys by `step`, Shift+Arrow by 4×, Home/End
-  to min/max, Enter toggles collapsed (to min) and back (WAI-ARIA window splitter pattern).
-- Pointer: drag with pointer capture, the size follows on every frame (rAF), double-click resets to `initial`.
-  Clamping is the component's (it knows min/max), and it emits `change` with the size for a page that wants it.
-- Styling: needs temper's separator look (T4); until then scoped CSS for the hit area and a hover/focus line.
-- Cost: under 1 kB gzip. Replaces `email-split.html/.ts`, two helpers and the handle CSS in caley.
+- No API to assume: the opinion is that it owns the layout of its two panes (slots `start` and `end`, a grid as large
+  as its box) and keeps its size itself, in localStorage under `sn:alloy-split:<name>` (a stored value is clamped to
+  min/max, so a changed max does not break it). The page writes no state, styles or helpers: caley's `mail-widths`
+  state, `clampWidth`/`keyWidth` and the handle CSS would go. A page that keeps the size in its own state binds it with
+  `data-sn-model` (sinter's custom input contract: `value` and `change`); nothing is stored then.
+- Props: `name`, `value`, `initial`, `min`, `max` (px), `step` (keyboard, default 16), `label`, `controls` (the sized
+  pane's id for `aria-controls`; decided Q-SP1: a prop), `direction: 'row' | 'column'`, `reverse` (the `end` pane is
+  sized). Event `change` with the size after each move.
+- Keyboard and a11y: `role="separator"`, focusable, `aria-orientation` (vertical for a row split),
+  `aria-valuenow/min/max`, `aria-label`, `aria-controls`. Arrow keys by `step` (the direction's own arrows, reversed for
+  an end pane), Shift by 4×, Home/End to min/max, Enter collapses to min and opens to the remembered size (WAI-ARIA
+  window splitter pattern).
+- Pointer: drag with pointer capture (mouse, touch, pen; `touch-action: none` on the separator only), the size follows
+  every frame, double-click puts it back to `initial`; the separator takes the focus, so the keys work after a drag.
+- First frame and CSP: the size is a style binding (`--al-size`), which sinter pre-renders into the HTML as a `style`
+  attribute. Under `style-src 'self'` alone the attribute is blocked: the panes start at a 30% fallback and the page
+  module applies the size. A page needs `style-src-attr 'unsafe-inline'` for a right first frame (caley's CSP has
+  `style-src 'self' 'unsafe-inline'`). A stored size is read by the script, after the first paint: the panes may move
+  once on load for a size that differs from `initial` (S11).
+- Styling: a 9px hit area with a 1px `--tm-border` line, `--tm-accent` and 3px on hover, focus and while dragging; scoped
+  CSS (T4 would move it to temper). Not yet: a narrow-screen mode (panes stacked), which caley's mail page does itself.
+- Tests: the decisions (keys, drag, collapse, stored values), render tests with the real script (keys, the stored size
+  coming back, Enter, a bound value), Chromium (mouse drag with clamping, the stored size after a reload, double-click,
+  a model-bound reversed split, a column split, a touch drag, and the page under `style-src 'self'` alone).
 
 ## 3. Date, time and range pickers
 
@@ -384,6 +396,8 @@ virtual list is the other half: it renders only the loaded rows in view.
 | S8 | Optional lazy component scripts (a script that loads on first focus/pointerdown on its root) | The palette and pickers are idle on most page loads; markup must still render early. | design |
 | S9 | **A resource handle as a prop**: a prop typed `Resource<T>` (or a marker in `data-sn-props`) gets the store handle of the resource the use names (`items: tasks`), checked like store functions' arguments (SN301) | The self-saving sortable and the virtual list need the handle; today they take the resource's name as a string (`resource: 'tasks'`), which nothing checks, and find it with `instance(document).resource(name)`. With `T`, it also types the rows (S1). | after the spike |
 | S10 | **The store handle exposes its resolved `src` and its `order` field** | Then `save` defaults to `<src>/order` and `field` to `order`, and the sortable needs only `items`. Today the handle has `name`, `key`, `meta`, `get`, `merge`, … but neither. | after the spike |
+| S11 | **Persisted state with a computed key, restored by the early script** (`data-sn-persist` whose key reads a prop) | The split keeps its size under `name`; restored by its script, after the first paint, the panes can move once on load. `data-sn-persist` takes a literal key, so a component used twice cannot persist each use. | split |
+| S12 | **First-frame styles without a `style` attribute** (e.g. sinter's per-page stylesheet for initial style bindings, or setting them from the early script) | A style binding's initial value is written as a `style` attribute, which `style-src 'self'` blocks: the split needs `style-src-attr 'unsafe-inline'` for a right first frame. | split |
 
 Already sufficient: slots that pass data (`Slot<T>`), component scripts with refs and state, `data-sn-model` on
 components (split, pickers), `data-sn-options` (palette), resource `order` re-sorting merged items (the whole
@@ -425,8 +439,8 @@ Decide these before the component they belong to is built.
 - **Q-B1 — Boards: reorder the lists themselves?** (kanban columns). Not in v1 unless a use appears.
 - **Q-B2 — One board for kanban and the calendar grid** (a `placeOf` mapping pointer → `{ list, at }`), or a
   separate `alloy-schedule` for time grids? Recommendation: try one; split if the props get conditional.
-- **Q-SP1 — Split panes and ids.** `aria-controls` needs the pane's id; pass it as a prop (`controls: 'mail-list'`)
-  or let the component find the previous sibling? Recommendation: a prop.
+- **Q-SP1 — decided:** `aria-controls` from a `controls` prop. **Q-SP2:** a narrow-screen mode (stack the panes below a
+  width), or leave narrow layouts to the page as caley's mail page does now?
 - **Q-D1 — Native date inputs.** Keep native inputs as the default and use `alloy-date` only where the locale or
   marks matter (calendar, search), or replace them everywhere for consistency?
 - **Q-D2 — Range binding:** the URL form (`params: ['start', 'end']`) is the assumed default; is a

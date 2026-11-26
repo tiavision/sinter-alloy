@@ -30,16 +30,17 @@
             { id: 'c6', title: 'Chromium tests', status: 'done', tag: 'tests' },
           ],
           lastCard: /** @type {BoardMove|null} */ (null),
+          splitSize: 0,
         }">
     <header data-layout="stack" data-gap="sm">
       <span data-caption>@tiavision/sinter-alloy · 0.1.0</span>
       <h1>sinter-alloy</h1>
-      <p class="lede">Opinionated sinter components for what attributes cannot do. Two are built and run live below:
-        drag a row or card by its handle, or focus a handle and use Space and the arrow keys. The others are designed;
+      <p class="lede">Opinionated sinter components for what attributes cannot do. Three are built and run live below:
+        drag a row or card by its handle, or focus a handle and use Space and the arrow keys; drag the split's separator. The others are designed;
         their mockups use the temper attributes they would be built from.</p>
       <div data-layout="row" data-gap="xs">
-        <span data-badge data-tone="success">2 built</span>
-        <span data-badge data-tone="neutral">5 designed</span>
+        <span data-badge data-tone="success">3 built</span>
+        <span data-badge data-tone="neutral">4 designed</span>
       </div>
     </header>
 
@@ -94,30 +95,34 @@
       <pre class="code" data-sn-text="lastCard ? 'PUT /api/cards/order\n' + JSON.stringify({ group: lastCard.toGroup, order: cards.filter((c) => c.status === lastCard?.toGroup).map((c) => c.id) }) : 'Move a card to see the request.'"></pre>
     </section>
 
-    <!-- ── Split panes (mockup) ── -->
+    <!-- ── Split panes ── -->
     <section data-layout="stack" data-gap="md" aria-labelledby="h-split">
       <div data-layout="row" data-gap="sm" data-align="center">
         <h2 id="h-split">Split panes</h2>
-        <span data-badge data-tone="neutral">Designed</span>
+        <span data-badge data-tone="success">Built</span>
         <code>&lt;alloy-split&gt;</code>
       </div>
       <p class="lede">Owns its two panes and keeps their size itself. Drag the separator, or focus it and use the arrow
-        keys; Enter collapses the first pane. Mockup: the separator does not move here.</p>
-      <div class="split" aria-label="Mockup of split panes">
-        <nav data-layout="stack" data-gap="xs" data-pad="sm">
-          <span data-caption>Folders</span>
-          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="inbox" aria-current="true">Inbox</button>
-          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="send">Sent</button>
-          <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="archive">Archive</button>
-        </nav>
-        <div class="shown" role="separator" tabindex="0" aria-orientation="vertical" aria-valuenow="176" aria-valuemin="140" aria-valuemax="400" aria-label="Folders width"></div>
-        <div data-layout="stack" data-gap="xs" data-pad="sm">
-          <strong>Sprint 24 notes</strong>
-          <span data-muted>Alice Brennan · Nov 25</span>
-          <p>The second pane takes the rest of the width.</p>
-        </div>
+        keys (Shift for bigger steps); Enter collapses the folders and opens them again; a double-click puts it back. The
+        size you leave is there on your next visit.</p>
+      <div class="split-box">
+        <alloy-split data-sn-with="{ name: 'preview-folders', initial: 176, min: 120, max: 400, label: 'Folders width', controls: 'preview-folders' }"
+                     data-sn-on-change="splitSize = $event.detail">
+          <nav slot="start" id="preview-folders" data-layout="stack" data-gap="xs" data-pad="sm">
+            <span data-caption>Folders</span>
+            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="inbox" aria-current="true">Inbox</button>
+            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="send">Sent</button>
+            <button type="button" data-variant="item" data-size="sm" data-layout="row" data-gap="sm" data-wrap="none" data-icon="archive">Archive</button>
+          </nav>
+          <div slot="end" data-layout="stack" data-gap="xs" data-pad="sm">
+            <strong>Sprint 24 notes</strong>
+            <span data-muted>Alice Brennan · Nov 25</span>
+            <p>The second pane takes the rest of the width.</p>
+            <span data-caption data-sn-text="splitSize ? 'change: ' + splitSize + ' px' : ''"></span>
+          </div>
+        </alloy-split>
       </div>
-      <pre class="code">&lt;alloy-split data-sn-with="{ name: 'mail-sidebar', min: 140, max: 400, initial: 220, label: 'Folders width' }"&gt;
+      <pre class="code">&lt;alloy-split data-sn-with="{ name: 'mail-sidebar', initial: 220, min: 140, max: 400, label: 'Folders width' }"&gt;
   &lt;nav slot="start"&gt;…&lt;/nav&gt;  &lt;section slot="end"&gt;…&lt;/section&gt;
 &lt;/alloy-split&gt;</pre>
     </section>

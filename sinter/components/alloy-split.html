@@ -1,0 +1,66 @@
+<!--
+  alloy-split: two panes and a separator between them that the user drags or moves with the keys. Public.
+
+  <alloy-split data-sn-with="{ name: 'mail-sidebar', initial: 220, min: 140, max: 400, label: 'Folders width' }">
+    <nav slot="start">…</nav>
+    <section slot="end">…</section>
+  </alloy-split>
+
+  It owns the layout of its two panes (a grid as large as the box it is put in: give it a height for a column split) and
+  keeps the sized pane's size itself: with `name`, in localStorage (`sn:alloy-split:<name>`), so it comes back on the
+  next visit; the page writes no state. A page that wants the size in its own state binds it instead:
+  `data-sn-model="widths.sidebar"` (a `value` prop and a `change` event), and nothing is kept by the component.
+
+  - initial, min, max: the sized pane's size in px; step: one arrow key's move (16; Shift: four times).
+  - direction: 'row' (default, panes side by side, the start pane sized) or 'column' (one above the other);
+    reverse: the end pane is the sized one.
+  - label: the separator's accessible name; controls: the sized pane's id, for aria-controls.
+  - Keys on the separator (focusable, role="separator", aria-valuenow/min/max): the arrows move it, Shift for larger
+    steps, Home and End go to min and max, Enter collapses the pane to min and opens it again. Pointer: drag it (any
+    pointer; touch-action: none on the separator only); double-click puts it back to `initial`.
+  - change: the size, after each move (a key, the end of a drag, a double-click).
+
+  CSP: the size is a style binding, which sinter writes into the HTML as a `style` attribute for the first frame. A page
+  served with `style-src 'self'` alone blocks it: allow `style-src-attr 'unsafe-inline'` (as caley's `style-src 'self'
+  'unsafe-inline'` does), or the panes show at the fallback size (30% of the box) until the page module applies it.
+
+  The script (alloy-split.ts) writes only the component's state; the decisions are ../split.ts.
+-->
+<template data-sn-props="{ name?: string; value?: number; initial: number; min: number; max: number; step?: number; label: string; controls?: string; direction?: 'row' | 'column'; reverse?: boolean }" data-sn-emits="{ change: number }">
+  <div class="alloy-split" data-sn-state="{ size: -1, dragging: false }"
+       data-sn-let="{ now: value ?? (size < 0 ? initial : size) }"
+       data-sn-class="{ column: direction === 'column', reverse: !!reverse, dragging }"
+       data-sn-style="{ '--al-size': now + 'px' }">
+    <div class="al-pane al-start"><slot name="start"></slot></div>
+    <div class="al-separator" role="separator" tabindex="0" data-sn-ref="separator"
+         data-sn-attr="{ 'aria-orientation': direction === 'column' ? 'horizontal' : 'vertical', 'aria-valuenow': now, 'aria-valuemin': min, 'aria-valuemax': max, 'aria-label': label, 'aria-controls': controls ?? null }"></div>
+    <div class="al-pane al-end"><slot name="end"></slot></div>
+  </div>
+</template>
+<style>
+  .alloy-split {
+    display: grid; grid-template-columns: var(--al-size, 30%) auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+    min-inline-size: 0; min-block-size: 0; block-size: 100%;
+  }
+  .alloy-split.reverse { grid-template-columns: minmax(0, 1fr) auto var(--al-size, 30%); }
+  .alloy-split.column { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--al-size, 30%) auto minmax(0, 1fr); }
+  .alloy-split.column.reverse { grid-template-rows: minmax(0, 1fr) auto var(--al-size, 30%); }
+  .al-pane { min-inline-size: 0; min-block-size: 0; overflow: auto; }
+  .al-separator {
+    position: relative; inline-size: 9px; margin-inline: -4px; z-index: 1;
+    cursor: col-resize; touch-action: none; outline: none;
+  }
+  .column > .al-separator { inline-size: auto; block-size: 9px; margin-inline: 0; margin-block: -4px; cursor: row-resize; }
+  .al-separator::before {
+    content: ''; position: absolute; inset-block: 0; inset-inline-start: 4px; inline-size: 1px; background: var(--tm-border);
+  }
+  .column > .al-separator::before { inset-inline: 0; inset-block-start: 4px; inline-size: auto; block-size: 1px; }
+  .al-separator:hover::before, .al-separator:focus-visible::before, .dragging > .al-separator::before {
+    background: var(--tm-accent); inset-inline-start: 3px; inline-size: 3px;
+  }
+  .column > .al-separator:hover::before, .column > .al-separator:focus-visible::before, .column.dragging > .al-separator::before {
+    inset-inline-start: 0; inline-size: auto; inset-block-start: 3px; block-size: 3px;
+  }
+  .dragging, .dragging * { cursor: col-resize; user-select: none; }
+  .column.dragging, .column.dragging * { cursor: row-resize; }
+</style>

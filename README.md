@@ -8,12 +8,12 @@ first used by [caley](https://github.com/tiavision/caley).
 | --- | --- |
 | [`<alloy-sortable>`](#alloy-sortable) | built: a list reordered with a pointer (mouse, touch, pen) or the keyboard |
 | [`<alloy-board>`](#alloy-board) | built: cards moved within and between columns |
-| [`<alloy-split>`](#planned) | designed: two panes and a separator that keeps its size |
+| [`<alloy-split>`](#alloy-split) | built: two panes and a separator that keeps its size |
 | [`<alloy-date>`, `<alloy-range>`, `<alloy-month>`](#planned) | designed: dates in the page's language, a range in the URL |
 | [`<alloy-palette>`](#planned) | designed: a Ctrl+K command palette |
 | [`<alloy-virtual>`](#planned) | designed: a long list over sinter's `append` pagination |
 
-**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): the two
+**[Preview](https://claude.ai/artifact/QHz6QSprLs8idJk7Pk2L2F)** (private for now: share it from its Share menu): the three
 built components live, and mockups of the designed ones. Its source is `preview/` (`npm run preview:build`). The
 design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN.md).
 
@@ -123,13 +123,40 @@ ArrowLeft/ArrowRight to the neighbouring column, Space or Enter drops, Escape pu
 with the column's name. Pointer: the card follows the pointer across columns, a line shows the place, an empty column
 is outlined, the board scrolls sideways near its edges. Helpers: `alloy.columnAfter`, `alloy.rankIn`, `alloy.regroup`.
 
+## `<alloy-split>`
+
+```html
+<alloy-split data-sn-with="{ name: 'mail-sidebar', initial: 220, min: 140, max: 400, label: 'Folders width' }">
+  <nav slot="start">…</nav>
+  <section slot="end">…</section>
+</alloy-split>
+```
+
+Two panes and a separator. The component lays them out (a grid as large as its box; give a column split a height) and
+keeps the size itself: with `name` it is stored in localStorage (`sn:alloy-split:<name>`) and comes back on the next
+visit, so the page writes no state. A page that keeps the size in its own state binds it instead:
+`data-sn-model="widths.sidebar"` (nothing is stored then).
+
+| | |
+| --- | --- |
+| `initial`, `min`, `max`, `step` | the sized pane's size in px; one arrow key's move (16, Shift four times) |
+| `direction`, `reverse` | `'row'` (side by side, default) or `'column'`; `reverse`: the end pane is the sized one |
+| `name` | where the size is kept; without it, nothing is |
+| `label`, `controls` | the separator's accessible name; the sized pane's id (`aria-controls`) |
+| `value` / event `change` | the size, for `data-sn-model`; `change` after every move |
+
+Keyboard: the separator is focusable (`role="separator"`, `aria-valuenow/min/max`); the arrows move it, Shift for
+bigger steps, Home and End go to min and max, Enter collapses the pane and opens it again. Pointer: drag it with a
+mouse, touch or pen; double-click puts it back to `initial`.
+
+CSP: sinter writes the size into the first frame's HTML as a `style` attribute. A page served with `style-src 'self'`
+alone needs `style-src-attr 'unsafe-inline'` for it, or the panes start at 30% until the page module applies the size.
+
 ## Planned
 
 Designed in [docs/DESIGN.md](docs/DESIGN.md), not built yet; the preview shows a mockup of each. Each assumes one shape,
 as the sortable does, so a page writes the tag and nothing else.
 
-- **`<alloy-split>`**: two panes (slots `start`, `end`) and a separator between them that keeps its size itself
-  (persisted under `name`): pointer drag, arrow keys, Enter to collapse. Would replace caley's `<email-split>`.
 - **`<alloy-date>`, `<alloy-range>`, `<alloy-month>`**: a date field with a calendar popover, a range bound to two URL
   parameters (`params: ['start', 'end']`, ISO dates), a month picker; weekday names and the week's first day from the
   page's language, whatever the browser's.
@@ -145,6 +172,8 @@ sinter/
   components/alloy-sortable.html   markup, contract, scoped styles (tokens only)
   components/alloy-sortable.ts     the script: pointer and keyboard, writes only its state
   components/alloy-board.html/.ts  the board, the same way
+  components/alloy-split.html/.ts  the split panes
+  split.ts                         the split's decisions, pure
   board.ts                         the board's state machine, pure
   sortable.ts                      the state machine, pure
   save.ts                          the round trip's body and answer, pure

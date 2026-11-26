@@ -40,7 +40,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -73,7 +73,8 @@ beforeAll(async () => {
         const file = readFileSync(join(dist, path));
         const type = path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : path.endsWith('.html') ? 'text/html' : 'application/octet-stream';
         res.setHeader('Content-Type', type);
-        if (type === 'text/html') res.setHeader('Content-Security-Policy', CSP);
+        // the split's first frame needs its style attribute (alloy-split.html, "CSP"); `?strict` serves it without
+        if (type === 'text/html') res.setHeader('Content-Security-Policy', path.startsWith('/split/') && !url.searchParams.has('strict') ? CSP + "; style-src-attr 'unsafe-inline'" : CSP);
         res.end(file);
       } catch { res.statusCode = 404; res.end(); }
     });
@@ -106,8 +107,10 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
     document.addEventListener('securitypolicyviolation', (e) => (window as unknown as { __v: string[] }).__v.push(`${e.violatedDirective} ${e.blockedURI}`));
   });
   await page.goto(base + path);
-  await page.waitForSelector('li[data-al-key]');
-  await page.waitForFunction(() => !!document.querySelector('.al-handle[aria-description]')); // the script has connected
+  await page.waitForSelector('li[data-al-key], [role="separator"]');
+  // the scripts have connected: a handle has its description, or (a split page) the page module has loaded
+  await page.waitForFunction(() => !!document.querySelector('.al-handle[aria-description]') || !document.querySelector('.al-handle'));
+  await page.waitForLoadState('networkidle');
   return { page, check: async () => {
     expect(await page.evaluate(() => (window as unknown as { __v: string[] }).__v)).toEqual([]);
     expect(errors).toEqual([]);
@@ -237,4 +240,82 @@ test('board over state: keyboard across columns, no request', async () => {
   expect(writes).toEqual([]);
   if (process.env.SHOTS) await page.screenshot({ path: join(process.env.SHOTS, 'board-state.png') });
   await check();
+});
+
+// ── split panes ──
+
+const box = (p: Page, sel: string) => p.locator(sel).boundingBox().then((b) => b!);
+
+test('split: a mouse drag resizes the pane, the size is kept for the next visit, a double-click puts it back', async () => {
+  const { page, check } = await open('split/');
+  const sep = page.locator('#own [role="separator"]');
+  const s = await box(page, '#own [role="separator"]');
+  const nav = await box(page, '#folders');
+  expect(Math.round(nav.width)).toBe(200);
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(s.x + s.width / 2 + 60 * i / 6, s.y + s.height / 2);
+  await expect.poll(() => page.locator('#own .alloy-split').evaluate((el) => el.classList.contains('dragging'))).toBe(true);
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await box(page, '#folders')).width)).toBe(260);
+  expect(await sep.getAttribute('aria-valuenow')).toBe('260');
+  // past max: clamped
+  const s2 = await box(page, '#own [role="separator"]');
+  await page.mouse.move(s2.x + s2.width / 2, s2.y + s2.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(s2.x + 500, s2.y + s2.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(() => sep.getAttribute('aria-valuenow')).toBe('360');
+  await page.reload();
+  await page.waitForFunction(() => !!document.querySelector('#own [role="separator"]'));
+  await expect.poll(async () => Math.round((await box(page, '#folders')).width)).toBe(360);
+  await page.locator('#own [role="separator"]').dblclick();
+  await expect.poll(async () => Math.round((await box(page, '#folders')).width)).toBe(200);
+  await page.evaluate(() => localStorage.clear());
+  await check();
+});
+
+test('split: keys, a reversed split bound to the page\'s state, a column split', async () => {
+  const { page, check } = await open('split/');
+  await page.locator('#model [role="separator"]').focus();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Shift+ArrowLeft');
+  await expect.poll(() => page.locator('#width').textContent()).toBe('380');
+  expect(Math.round((await box(page, '#model aside')).width)).toBe(380);
+  // the column split: the end pane is the sized one; dragging up grows it
+  const s = await box(page, '#column [role="separator"]');
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2 - 40, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.locator('#column [role="separator"]').getAttribute('aria-valuenow')).toBe('160');
+  await check();
+});
+
+test('split: a touch drag on the separator', async () => {
+  const { page, check } = await open('split/', devices['Pixel 7']);
+  const s = await box(page, '#own [role="separator"]');
+  const cdp = await page.context().newCDPSession(page);
+  const at = (x: number) => [{ x, y: s.y + s.height / 2 }];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(s.x + s.width / 2) });
+  for (let i = 1; i <= 5; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(s.x + s.width / 2 + 40 * i / 5) });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(() => page.locator('#own [role="separator"]').getAttribute('aria-valuenow')).toBe('240');
+  await check();
+});
+
+test('split under style-src \'self\' alone: the first frame\'s size attribute is blocked, the page module applies it', async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const violations: string[] = [];
+  page.on('console', (m) => { if (m.type() === 'error' && !/Content Security Policy/.test(m.text())) violations.push(m.text()); });
+  await page.goto(base + 'split/?strict');
+  await page.waitForLoadState('networkidle');
+  await expect.poll(async () => Math.round((await page.locator('#folders').boundingBox())!.width)).toBe(200);
+  await page.locator('#own [role="separator"]').focus();
+  await page.keyboard.press('End');
+  await expect.poll(async () => Math.round((await page.locator('#folders').boundingBox())!.width)).toBe(360);
+  expect(violations).toEqual([]);
+  await page.evaluate(() => localStorage.clear());
+  await ctx.close();
 });
