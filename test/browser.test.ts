@@ -127,7 +127,12 @@ async function open(path: string, options = {}): Promise<{ page: Page; check: ()
     // transition: the page is right, the transition is skipped
     if (m.type() === 'error' && !m.text().includes('500') && !m.text().startsWith('Transition was aborted because of invalid state')) errors.push(m.text());
   });
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => {
+    // Chromium: a cross-document view transition (temper's) interrupted by the next navigation rejects its `ready`,
+    // which sinter's transition script leaves unhandled (reported to sinter; remove this once it handles it)
+    if (e.message.startsWith('Transition was aborted because of invalid state')) return;
+    errors.push(`uncaught: ${e.message}${e.stack ? ' @ ' + e.stack.split('\n').slice(0, 3).join(' / ') : ''}`);
+  });
   await page.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
     document.addEventListener('securitypolicyviolation', (e) => (window as unknown as { __v: string[] }).__v.push(`${e.violatedDirective} ${e.blockedURI}`));
