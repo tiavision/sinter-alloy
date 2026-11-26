@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a sortable list with an optimistic reorder</title>
+</head>
+<body>
+  <!-- A list from an API, kept sorted by `rank`. A drop moves the row at once (one merge in the optimistic layer:
+       the store sorts it into place) and sends the new order; a failed request drops the layer and the row goes back. -->
+  <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
+  <main data-sn-state="{ mv: /** @type {Move | null} */ (null), error: '' }">
+    <p role="alert" data-sn-text="error"></p>
+    <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
+                    data-sn-on-move="mv = $event.detail; run('save-order')">
+      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+    </alloy-sortable>
+    <span hidden id="save-order" data-sn-put="/api/tasks/order" data-sn-when="mv"
+          data-sn-body="{ ids: alloy.keysAfter(tasks, mv, (t) => t.id) }"
+          data-sn-optimistic="merge(tasks.find((t) => t.id === mv.key), { rank: alloy.between(tasks, mv, 'rank') })"
+          data-sn-then="error = ''" data-sn-catch="error = $error.detail ?? $error.message"
+          data-sn-write-through="off"></span>
+  </main>
+</body>
+</html>

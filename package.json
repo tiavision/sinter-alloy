@@ -1,0 +1,61 @@
+{
+  "name": "@tiavision/sinter-alloy",
+  "version": "0.1.0",
+  "description": "Opinionated sinter components for what needs a script: sortable lists and boards first, then pickers, a command palette, long lists and split panes. Built for temper, first used by caley.",
+  "license": "MIT",
+  "author": "Tia Heinrich",
+  "homepage": "https://github.com/tiavision/sinter-alloy#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiavision/sinter-alloy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tiavision/sinter-alloy/issues"
+  },
+  "keywords": [
+    "sinter",
+    "temper",
+    "sortable",
+    "drag-and-drop",
+    "components"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "sinter": "./sinter",
+  "exports": {
+    ".": "./sinter/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "sinter",
+    "!sinter/sinter.components.d.ts",
+    "docs",
+    "llms.txt",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "sinter check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@tiaforge-ui/sinter": ">=0.22.0 <1",
+    "@tiaforge-ui/temper": ">=0.4.0 <1"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@tiaforge-ui/sinter": "0.22.1",
+    "@tiaforge-ui/temper": "0.4.0",
+    "@types/node": "26.6.6",
+    "jsdom": "31.0.1",
+    "playwright": "1.63.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}

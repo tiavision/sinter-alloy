@@ -1,0 +1,70 @@
+<!--
+  alloy-sortable: a list whose rows the user reorders, with a pointer (mouse, touch, pen) or the keyboard. Public.
+
+  <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, nameOf: (f) => f.display_name, label: 'Folders' }"
+                  data-sn-on-move="mv = $event.detail; run('folders-order')">
+    <a slot="item" data-grow data-sn-href="/folder/{$slot.item.folder_id}" data-sn-text="$slot.item.display_name"></a>
+  </alloy-sortable>
+
+  The list renders in the first frame like the page's own markup: the rows are a data-sn-for over `items`, each row
+  the app's `item` fill (it sees the page's scope and $slot.item, $slot.index). The component owns the row's frame
+  only: a grip handle before the fill, and the row's look while it is moved.
+
+  It changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
+  what that means, usually one optimistic merge and one request: with `order="sort_order"` on the resource,
+  `merge(item, { sort_order: alloy.between(list, mv, 'sort_order') })` moves the row at once and rolls back with the
+  request. Until the page changes `items`, the row stays where it was; a live update from another tab (a server
+  event re-sorting the resource) moves it like any other change.
+
+  - items: the rows, in their order. keyOf: a row's key (unique, stable). nameOf: its name for the handle's label
+    and the announcements (default: the key). label: the list's accessible name.
+  - disabled: no handles, nothing moves (a pending save, a filtered list whose order means nothing).
+  - quiet: the handles show on hover and focus only (on a touch screen they always show).
+  - text: the words, for another language (SortableText; English by default).
+  - The handle is a button: Space or Enter picks the row up, the arrow keys (Home, End) move it, Space or Enter drops
+    it, Escape or leaving the list puts it back; each step is announced in the component's live region. A pointer
+    drags from the handle (touch-action: none on it only, so the list still scrolls), the row follows the pointer,
+    a line shows where it will drop, and the nearest scrolling box scrolls near its edges. Escape cancels a drag.
+
+  The script (alloy-sortable.ts) writes only the component's state; the state machine is ../sortable.ts.
+-->
+<template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move }">
+  <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '' }"
+       data-sn-class="{ quiet: !!quiet, dragging: via === 'pointer' }">
+    <ul role="list" data-layout="stack" data-gap="none" data-sn-attr="{ 'aria-label': label }">
+      <template data-sn-for="(it, i) in items" data-sn-key="keyOf(it)">
+        <li data-layout="row" data-gap="none" data-wrap="none" data-align="center"
+            data-sn-let="{ k: keyOf(it), name: nameOf ? nameOf(it) : keyOf(it) }"
+            data-sn-attr="{ 'data-al-key': k, 'data-al-lifted': lifted === k ? via : null, 'data-al-line': lineKey === k ? lineSide : null }"
+            data-sn-style="{ '--al-dy': lifted === k && via === 'pointer' ? dy + 'px' : null }">
+          <template data-sn-if="!disabled">
+            <button type="button" class="al-handle" data-variant="ghost" data-size="sm" data-icon="grip-vertical"
+                    data-sn-attr="{ 'aria-label': text?.handle ? text.handle(name) : 'Move ' + name, 'aria-description': instructions, 'aria-pressed': lifted === k ? 'true' : 'false' }"></button>
+          </template>
+          <slot name="item" data-sn-with="{ item: it, index: i }"><span data-grow data-truncate data-sn-text="name"></span></slot>
+        </li>
+      </template>
+    </ul>
+    <div class="al-status" data-sr-only role="status" data-sn-text="status"></div>
+  </div>
+</template>
+<style>
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { position: relative; border-radius: var(--tm-radius); }
+  .al-handle { touch-action: none; cursor: grab; flex: none; }
+  .dragging, .dragging * { cursor: grabbing; user-select: none; }
+  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); box-shadow: var(--tm-shadow-sm); }
+  li[data-al-lifted='pointer'] { transform: translateY(var(--al-dy, 0)); box-shadow: var(--tm-shadow-lg); }
+  li[data-al-line]::after {
+    content: ''; position: absolute; inset-inline: 0; block-size: 2px; border-radius: var(--tm-radius-full);
+    background: var(--tm-accent); pointer-events: none;
+  }
+  li[data-al-line='before']::after { inset-block-start: -1px; }
+  li[data-al-line='after']::after { inset-block-end: -1px; }
+  @media (hover: hover) {
+    .quiet li:not(:hover, :focus-within, [data-al-lifted]) .al-handle { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    li { transition: box-shadow var(--tm-duration) var(--tm-ease); }
+  }
+</style>

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a list of constants, in another language, quiet handles</title>
+</head>
+<body>
+  <!-- Items from state, the words in German, handles shown on hover; the page applies the move to its own state. -->
+  <main data-sn-state="{ names: ['Arbeit', 'Privat', 'Reisen'] }">
+    <alloy-sortable data-sn-with="{ items: names, keyOf: (n) => n, label: 'Ordner', quiet: true,
+                                     text: { handle: (n) => n + ' verschieben', instructions: 'Leertaste zum Aufnehmen, Pfeiltasten zum Verschieben.' } }"
+                    data-sn-on-move="names = alloy.reorder(names, $event.detail)"></alloy-sortable>
+  </main>
+</body>
+</html>
