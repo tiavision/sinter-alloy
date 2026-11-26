@@ -43,3 +43,29 @@ export interface SortError {
   move: Move;
   error: unknown;
 }
+
+/**
+ * One card moved on an <alloy-board>: the `move` event's detail. `from` is its index in its old column, `to` its index
+ * in the new one (counted without it); `after` and `before` are its new neighbours' keys in that column.
+ */
+export interface BoardMove extends Move {
+  fromGroup: string;
+  toGroup: string;
+}
+
+/** The words <alloy-board> says; `list` is the column's name, `position` counts from 1 within it. */
+export interface BoardText {
+  handle: (name: string) => string;
+  instructions: string;
+  lifted: (name: string, list: string, position: number, total: number) => string;
+  moved: (name: string, list: string, position: number, total: number) => string;
+  dropped: (name: string, list: string, position: number, total: number) => string;
+  cancelled: (name: string, list: string, position: number) => string;
+  failed: string;
+}
+
+/** `sort-error`'s detail on a board. */
+export interface BoardError {
+  move: BoardMove;
+  error: unknown;
+}

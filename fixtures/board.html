@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a board that saves its own moves</title>
+</head>
+<body>
+  <!-- Cards from an API, each in a column by `status`, ordered by `rank`. A drop moves the card at once (an optimistic
+       merge of its status and rank) and saves the target column: PUT /api/cards/order { group, order }. -->
+  <sn-resource name="cards" src="/api/cards" key="id" order="rank" type="Card[]"></sn-resource>
+  <main>
+    <alloy-board data-sn-with="{ lists: [{ id: 'todo', title: 'To do' }, { id: 'doing', title: 'Doing' }, { id: 'done', title: 'Done' }],
+                                 listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
+                                 nameOf: (c) => c.title, group: 'status', label: 'Tasks',
+                                 resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+    </alloy-board>
+  </main>
+</body>
+</html>

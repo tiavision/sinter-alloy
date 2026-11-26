@@ -20,6 +20,11 @@ const a = app();
 const dist = join(a.root, 'dist');
 const START = [{ id: 'a', title: 'Alpha', rank: 0 }, { id: 'b', title: 'Beta', rank: 1 }, { id: 'c', title: 'Gamma', rank: 2 }];
 let tasks = structuredClone(START);
+const CARDS = [
+  { id: 'a', title: 'Alpha', status: 'todo', rank: 0 }, { id: 'b', title: 'Beta', status: 'todo', rank: 1 },
+  { id: 'c', title: 'Gamma', status: 'doing', rank: 0 },
+];
+let cards = structuredClone(CARDS);
 let refuse = false;
 const writes: Array<[string, string, unknown]> = [];
 let server: Server;
@@ -35,7 +40,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: { index: join(a.root, 'index.html'), manual: join(a.root, 'manual.html'), text: join(a.root, 'text.html') } },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -45,9 +50,15 @@ beforeAll(async () => {
     req.on('end', () => {
       const json = (status: number, v: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(v)); };
       if (url.pathname === '/api/tasks' && req.method === 'GET') return json(200, tasks);
+      if (url.pathname === '/api/cards' && req.method === 'GET') return json(200, cards);
       if (url.pathname.startsWith('/api/')) {
         writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
         if (refuse) return json(500, { error: 'no' });
+        if (url.pathname === '/api/cards/order') {
+          const { group, order } = JSON.parse(body) as { group: string; order: string[] };
+          cards = [...cards.filter((c) => !order.includes(c.id)), ...order.map((id, rank) => ({ ...cards.find((c) => c.id === id)!, status: group, rank }))];
+          return json(200, { cards });
+        }
         if (url.pathname === '/api/tasks/order') {
           const order = (JSON.parse(body) as { order: string[] }).order;
           tasks = order.map((id, rank) => ({ ...tasks.find((t) => t.id === id)!, rank }));
@@ -78,6 +89,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   tasks = structuredClone(START);
+  cards = structuredClone(CARDS);
   refuse = false;
   writes.length = 0;
 });
@@ -167,5 +179,62 @@ test('a page that applies the move itself sends its own request (another API sha
   await page.keyboard.press('Space');
   await settled(page, ['b', 'a', 'c']);
   await expect.poll(() => writes).toEqual([['POST', '/api/tasks/move', { id: 'b', after: null }]]);
+  await check();
+});
+
+// ── the board ──
+
+const board = (p: Page) => p.$$eval('[data-al-group]', (cols) => Object.fromEntries(cols.map((c) =>
+  [(c as HTMLElement).dataset.alGroup, [...c.querySelectorAll('li[data-al-key]')].map((li) => li.getAttribute('data-al-key'))])));
+
+/** drags `from`'s centre to (x, y) in small steps, checking `during` before letting go */
+async function drag(p: Page, from: { x: number; y: number; width: number; height: number }, x: number, y: number, during?: () => Promise<void>) {
+  const sx = from.x + from.width / 2, sy = from.y + from.height / 2;
+  await p.mouse.move(sx, sy);
+  await p.mouse.down();
+  for (let i = 1; i <= 10; i++) await p.mouse.move(sx + (x - sx) * i / 10, sy + (y - sy) * i / 10);
+  await during?.();
+  await p.mouse.up();
+}
+
+test('board: a mouse drag to another column moves the card at once and saves that column', async () => {
+  const { page, check } = await open('board/');
+  const from = (await handle(page, 'Alpha').boundingBox())!;
+  const target = (await page.locator('li[data-al-key="c"]').boundingBox())!;
+  await drag(page, from, target.x + target.width / 2, target.y + 3, async () => {
+    expect(await page.locator('li[data-al-lifted="pointer"]').getAttribute('data-al-key')).toBe('a');
+    expect(await page.locator('li[data-al-line="before"]').getAttribute('data-al-key')).toBe('c');
+  });
+  await expect.poll(() => board(page)).toEqual({ todo: ['b'], doing: ['a', 'c'], done: [] });
+  await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'doing', order: ['a', 'c'] }]]);
+  await page.reload();
+  await page.waitForSelector('li[data-al-key]');
+  expect(await board(page)).toEqual({ todo: ['b'], doing: ['a', 'c'], done: [] });
+  await check();
+});
+
+test('board: an empty column is outlined and takes the card', async () => {
+  const { page, check } = await open('board/');
+  const from = (await handle(page, 'Beta').boundingBox())!;
+  const done = (await page.locator('[data-al-group="done"] ul').boundingBox())!;
+  await drag(page, from, done.x + done.width / 2, done.y + done.height / 2, async () => {
+    expect(await page.locator('[data-al-group="done"] ul').getAttribute('data-al-line')).toBe('empty');
+  });
+  await expect.poll(() => board(page)).toEqual({ todo: ['a'], doing: ['c'], done: ['b'] });
+  await expect.poll(() => writes).toEqual([['PUT', '/api/cards/order', { group: 'done', order: ['b'] }]]);
+  await check();
+});
+
+test('board over state: keyboard across columns, no request', async () => {
+  const { page, check } = await open('board-state/');
+  await handle(page, 'Write the brief').focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Space');
+  await expect.poll(() => board(page)).toEqual({ todo: [], doing: ['2', '3'], done: ['1'] });
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe('Move Write the brief');
+  expect(writes).toEqual([]);
+  if (process.env.SHOTS) await page.screenshot({ path: join(process.env.SHOTS, 'board-state.png') });
   await check();
 });

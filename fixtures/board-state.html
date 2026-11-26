@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@tiavision/sinter-alloy: a board over state, with column headers of its own</title>
+</head>
+<body>
+  <!-- Cards kept in the page's state: no request; the page applies each move with alloy.regroup. -->
+  <main data-sn-state="{ cards: [{ id: '1', title: 'Write the brief', status: 'todo' }, { id: '2', title: 'Review', status: 'doing' }, { id: '3', title: 'Ship', status: 'doing' }] }">
+    <alloy-board data-sn-with="{ lists: ['todo', 'doing', 'done'], listKey: (s) => s, items: cards, keyOf: (c) => c.id,
+                                 nameOf: (c) => c.title, group: 'status', label: 'Plan' }"
+                 data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status')">
+      <h2 slot="list" data-sn-text="$slot.list + ' (' + $slot.count + ')'"></h2>
+      <span slot="item" data-grow data-sn-text="$slot.item.title"></span>
+    </alloy-board>
+  </main>
+</body>
+</html>

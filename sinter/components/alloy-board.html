@@ -1,0 +1,89 @@
+<!--
+  alloy-board: columns of cards the user moves within a column and between columns, with a pointer or the keyboard.
+  Public.
+
+  <sn-resource name="cards" src="/api/cards" key="id" order="rank"></sn-resource>
+  <alloy-board data-sn-with="{ lists: columns, listKey: (c) => c.id, listName: (c) => c.title, items: cards,
+                               keyOf: (c) => c.id, nameOf: (c) => c.title, group: 'status', label: 'Board',
+                               resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+    <article slot="item" data-sn-text="$slot.item.title"></article>
+  </alloy-board>
+
+  One resource of cards, each in a column by its `group` field (`status`), ordered by `field` (`rank`). Saving it
+  itself (`resource` and `save`): a drop merges the card's group and rank (between its new neighbours') as an
+  optimistic layer of the page's store, so it moves at once; then `PUT <save> { group, order }`, `order` every key of
+  the target column in its new order (the server sets the card's group and renumbers that column); one request at a
+  time; an answer holding the cards has their group and rank applied by key; a failure rolls back, shows
+  `text.failed` and emits `sort-error`. Without `resource` and `save`, a drop only emits `move` (a BoardMove) and the
+  page applies it (alloy.regroup for cards kept in state).
+
+  - lists: the columns, in order; listKey: a column's key (the value of the cards' `group` field); listName: its name.
+  - items, keyOf, nameOf, group (the field naming a card's column), field (the sort field, default 'sort_order').
+  - label: the board's accessible name. disabled: no handles. text: the words (BoardText; English by default).
+  - slot item ($slot.item, $slot.index, $slot.list): a card. slot list ($slot.list, $slot.count): a column's header.
+  - Keys on a card's handle: Space or Enter picks it up, ArrowUp/ArrowDown/Home/End move it in its column,
+    ArrowLeft/ArrowRight to the neighbouring column, Space or Enter drops, Escape or leaving the board puts it back;
+    announced in the live region with the column's name.
+  - Pointer: drag a handle; the card follows the pointer across columns, a line shows where it drops (an empty column
+    is outlined), the board scrolls sideways and the page vertically near the edges.
+
+  The script (alloy-board.ts) writes only the component's state; the state machine is ../board.ts.
+-->
+<template data-sn-props="{ lists: readonly any[]; listKey: (list: any) => string; listName?: (list: any) => string; items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; group: string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; text?: Partial<BoardText>; item: Slot<{ item: any; index: number; list: any }>; list: Slot<{ list: any; count: number }> }" data-sn-emits="{ move: BoardMove; 'sort-error': BoardError }">
+  <div class="alloy-board" data-sn-state="{ lifted: '', via: '', dx: 0, dy: 0, lineKey: '', lineSide: '', lineGroup: '', status: '', instructions: '', error: '' }"
+       data-sn-class="{ dragging: via === 'pointer' }">
+    <div class="al-columns" role="group" data-layout="row" data-gap="md" data-align="start" data-wrap="none" data-scroll data-sn-attr="{ 'aria-label': label }">
+      <template data-sn-for="l in lists" data-sn-key="listKey(l)">
+        <section class="al-column" data-layout="stack" data-gap="sm" data-pad="sm"
+                 data-sn-let="{ g: listKey(l), title: listName ? listName(l) : listKey(l), cards: items.filter((x) => String(x[group]) === listKey(l)) }"
+                 data-sn-attr="{ 'data-al-group': g, 'aria-label': title }">
+          <slot name="list" data-sn-with="{ list: l, count: cards.length }">
+            <header data-layout="row" data-gap="sm" data-align="center" data-wrap="none">
+              <span data-caption data-truncate data-grow data-sn-text="title"></span>
+              <span data-badge data-sn-text="cards.length"></span>
+            </header>
+          </slot>
+          <ul role="list" data-layout="stack" data-gap="xs" data-sn-attr="{ 'aria-label': title, 'data-al-line': lineGroup === g && !cards.length ? 'empty' : null }">
+            <template data-sn-for="(it, i) in cards" data-sn-key="keyOf(it)">
+              <li data-layout="row" data-gap="none" data-wrap="none" data-align="start"
+                  data-sn-let="{ k: keyOf(it), name: nameOf ? nameOf(it) : keyOf(it) }"
+                  data-sn-attr="{ 'data-al-key': k, 'data-al-lifted': lifted === k ? via : null, 'data-al-line': lineKey === k ? lineSide : null }"
+                  data-sn-style="{ '--al-dx': lifted === k && via === 'pointer' ? dx + 'px' : null, '--al-dy': lifted === k && via === 'pointer' ? dy + 'px' : null }">
+                <template data-sn-if="!disabled">
+                  <button type="button" class="al-handle" data-variant="ghost" data-size="sm" data-icon="grip-vertical"
+                          data-sn-attr="{ 'aria-label': text?.handle ? text.handle(name) : 'Move ' + name, 'aria-description': instructions, 'aria-pressed': lifted === k ? 'true' : 'false' }"></button>
+                </template>
+                <slot name="item" data-sn-with="{ item: it, index: i, list: l }"><span data-grow data-sn-text="name"></span></slot>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
+    </div>
+    <div class="al-status" data-sr-only role="status" data-sn-text="status"></div>
+    <template data-sn-if="error"><p role="alert" data-tone="danger" data-pad="xs" data-sn-text="error"></p></template>
+  </div>
+</template>
+<style>
+  .al-columns { padding-block-end: var(--tm-space-xs); }
+  .al-column {
+    flex: none; inline-size: var(--al-column, 17rem); max-inline-size: 85vw;
+    background: var(--tm-fill); border-radius: var(--tm-radius);
+  }
+  ul { list-style: none; margin: 0; padding: 0; min-block-size: 3rem; border-radius: var(--tm-radius); }
+  ul[data-al-line='empty'] { outline: 2px dashed var(--tm-accent); outline-offset: -2px; }
+  li {
+    position: relative; background: var(--tm-surface); border: 1px solid var(--tm-border);
+    border-radius: var(--tm-radius); padding: var(--tm-space-xs);
+  }
+  .al-handle { touch-action: none; cursor: grab; flex: none; }
+  .dragging, .dragging * { cursor: grabbing; user-select: none; }
+  li[data-al-lifted] { z-index: 1; background: var(--tm-surface-raised); box-shadow: var(--tm-shadow-sm); }
+  li[data-al-lifted='pointer'] { transform: translate(var(--al-dx, 0), var(--al-dy, 0)) rotate(1deg); box-shadow: var(--tm-shadow-lg); }
+  li[data-al-line]::after {
+    content: ''; position: absolute; inset-inline: 0; block-size: 2px; border-radius: var(--tm-radius-full);
+    background: var(--tm-accent); pointer-events: none;
+  }
+  li[data-al-line='before']::after { inset-block-start: calc(-1 * var(--tm-space-xs) / 2 - 1px); }
+  li[data-al-line='after']::after { inset-block-end: calc(-1 * var(--tm-space-xs) / 2 - 1px); }
+</style>

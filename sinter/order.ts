@@ -1,6 +1,6 @@
 // Pure helpers over a Move (sinter.types.ts): what an app's optimistic change and request body need.
 // They take the list the move was made in, typed by the app's own items, so the result keeps that type.
-import type { Move } from './sinter.types.js';
+import type { BoardMove, Move } from './sinter.types.js';
 
 type KeyOf<T> = (item: T) => string;
 
@@ -29,15 +29,47 @@ export function keysAfter<T>(list: readonly T[], move: Move, keyOf: KeyOf<T>): s
  */
 export function between<T>(list: readonly T[], move: Move, field: keyof T & string): number {
   const after = reorder(list, move);
-  const value = (i: number): number | null => {
-    const v = i >= 0 && i < after.length ? Number(after[i]![field]) : NaN;
-    return Number.isFinite(v) ? v : null;
-  };
-  const prev = value(move.to - 1), next = value(move.to + 1);
+  return midway(after[move.to - 1]?.[field], after[move.to + 1]?.[field]);
+}
+
+/** Halfway between two sort values, one past the one that is there, 0 with neither; equal ones stay equal. */
+export function midway(a: unknown, b: unknown): number {
+  const num = (v: unknown) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+  const prev = num(a), next = num(b);
   if (prev == null && next == null) return 0;
   if (prev == null) return next! - 1;
   if (next == null) return prev + 1;
   return prev === next ? prev : (prev + next) / 2;
+}
+
+// ── Boards: one list of items, each in a group (its column) ────────────────────────────────────────────────────
+
+/** The keys of the target column after a board move, in order: the `order` a board's save sends. */
+export function columnAfter<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf<T>, group: keyof T & string): string[] {
+  const rest = list.filter((x) => String(x[group]) === move.toGroup && keyOf(x) !== move.key).map(keyOf);
+  rest.splice(Math.max(0, Math.min(move.to, rest.length)), 0, move.key);
+  return rest;
+}
+
+/** The moved item's new sort value in its target column: halfway between its new neighbours' there. */
+export function rankIn<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf<T>, group: keyof T & string, field: keyof T & string): number {
+  const rest = list.filter((x) => String(x[group]) === move.toGroup && keyOf(x) !== move.key);
+  return midway(rest[move.to - 1]?.[field], rest[move.to]?.[field]);
+}
+
+/**
+ * The list after a board move, for items kept in state: the item gets its new group and sits right after its new
+ * `after` neighbour (or before `before`, or last when its column was empty). Sort fields are not touched.
+ */
+export function regroup<T>(list: readonly T[], move: BoardMove, keyOf: KeyOf<T>, group: keyof T & string): T[] {
+  const item = list.find((x) => keyOf(x) === move.key);
+  if (!item) return list.slice();
+  const out = list.filter((x) => x !== item);
+  const moved = { ...item, [group]: move.toGroup } as T;
+  const at = move.after != null ? out.findIndex((x) => keyOf(x) === move.after) + 1
+    : move.before != null ? out.findIndex((x) => keyOf(x) === move.before) : out.length;
+  out.splice(at < 0 ? out.length : at, 0, moved);
+  return out;
 }
 
 /** The item a move is about, by its key (undefined when the list no longer has it). */

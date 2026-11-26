@@ -27,3 +27,15 @@ export function saved(answer: unknown, keyOf: (item: object) => string, field: s
     try { return Number.isFinite(v) ? [[keyOf(x), v]] : []; } catch { return []; }
   });
 }
+
+/** The given fields of each item in an answer (the list, or an object holding it), by key: a board's group and rank. */
+export function savedFields(answer: unknown, keyOf: (item: object) => string, fields: readonly string[]): Array<[string, Record<string, unknown>]> {
+  const list = Array.isArray(answer) ? answer
+    : answer && typeof answer === 'object' ? Object.values(answer).find(Array.isArray) : undefined;
+  if (!list) return [];
+  return list.flatMap((x): Array<[string, Record<string, unknown>]> => {
+    if (!x || typeof x !== 'object') return [];
+    const got = Object.fromEntries(fields.filter((f) => f in x).map((f) => [f, (x as Record<string, unknown>)[f]]));
+    try { return Object.keys(got).length ? [[keyOf(x), got]] : []; } catch { return []; }
+  });
+}
