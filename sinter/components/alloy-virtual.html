@@ -11,15 +11,19 @@
   every loaded page stays in the list, the cursor and parameters are the API's) is the list, and `end`, emitted when
   the rows in view reach the last loaded ones, is the page's `page(list, 'next')` (which does nothing once there is no
   next page). The component renders the rows in view and a few around them; two spacers stand for the rest, sized from
-  the rows' measured heights (`estimate` for those not shown yet), so the scrollbar is right. It is the scrolling box:
-  give it a height (its box's, by default 100%).
+  the rows' measured heights (for those not shown yet: the average of those measured, `estimate` before any), so the
+  scrollbar is right. It is the scrolling box: give it a height (its box's, by default 100%).
+
+  Scrolling costs little: the rows are measured by a ResizeObserver (no layout forced from script), and the rows
+  rendered move only when the view comes within half the overscan of their edge, so a slow scroll renders every few
+  rows, not every frame. A page may pass a new `keyOf` function at every render; only a new `items` array counts.
 
   Before reaching for it: temper's `data-lazy` (CSS content-visibility) keeps every row in the page, so find in page and
   the browser's own keys work, and is enough up to a few thousand rows. alloy-virtual is for more than that.
 
   - items, keyOf: the rows and their key. label: the list's accessible name. total: the whole list's size where the
     server says it ($meta.<name>.total), for aria-setsize (else the rows loaded).
-  - estimate: a row's height before it is measured (48 px). overscan: rows rendered beyond the view on each side (6).
+  - estimate: a row's height before any is measured (48 px). overscan: rows rendered beyond the view on each side (8).
   - slot item ($slot.item, $slot.index): a row. event end: the view reached the last loaded rows.
   - Keys: the list is focusable and scrolls with the browser's keys; rows are role="listitem" with aria-posinset.
 -->

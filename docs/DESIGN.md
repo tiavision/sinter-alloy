@@ -393,13 +393,22 @@ virtual list is the other half: it renders only the loaded rows in view.
   rows. caley needs neither yet (**Q-V1**).
 - Keyboard and a11y: `role="list"`, `aria-setsize`/`aria-posinset` on rows; `data-sn-options` must be able to mark a
   row not rendered yet (S6).
-- The window (`virtual.ts`, pure): offsets from measured heights (`estimate` for the rest), a binary search for the
-  first and last rows in view, `overscan` rows each side, the spacers' heights. A ResizeObserver remeasures rows that
-  change height and the box; the first row in view keeps its place across those changes and when rows are added.
+- The window (`virtual.ts`, pure): offsets from measured heights (the measured average for the rest, `estimate` before
+  any), a binary search for the first and last rows in view, `overscan` rows each side, the spacers' heights. A
+  ResizeObserver measures the rows (their border box) and the box; the first row in view keeps its place across
+  height changes and when rows are added.
+- Scrolling: the scroll handler reads only `scrollTop`, once a frame; the offsets are computed again only when the
+  items or a height change; the window moves only when the view comes within half the overscan of the rows rendered
+  (a scroll of a row or two changes nothing in the page); only a new `items` array is a change of props (a page's
+  `keyOf` arrow is new at every render, which made every window change measure everything again). Against the same
+  rows scrolled natively by the browser, with nothing virtual (Chromium, 4× CPU throttling), it adds about 20
+  points of CPU at a normal pace (it added 28) and nothing at a fling, where the browser's own painting is the
+  limit.
 - Keys: the list is focusable and scrolls with the browser's own keys; marking rows not rendered (S6) is not done.
 - Cost: 1.1 kB gzip.
 - Tests: the window; Chromium over 2,000 people in pages of 100 (a screenful rendered, the scroll height for all
-  loaded rows, pages loading as the view reaches the end, `aria-posinset`/`aria-setsize`, back to the top).
+  loaded rows, pages loading as the view reaches the end, `aria-posinset`/`aria-setsize`, back to the top); a scroll
+  of a row or two changes nothing in the page; a row above the view that grows leaves the rows in view in place.
 
 ---
 

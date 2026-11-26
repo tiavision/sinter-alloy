@@ -352,10 +352,12 @@ test('date: the value in the page\'s language, the calendar under the field, key
   const pop = page.locator('#date [popover]');
   await expect.poll(() => pop.evaluate((el) => el.matches(':popover-open'))).toBe(true);
   expect(await toggle.getAttribute('aria-expanded')).toBe('true');
-  // under the field, starting where it starts (not under the button at its end)
+  // under the field, starting where it starts (not under the button at its end), once it has finished opening (temper
+  // scales it in, which moves its box meanwhile)
+  await pop.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
   const f = (await page.locator('#date [data-field]').boundingBox())!, b = (await pop.boundingBox())!;
   expect(b.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
-  expect(Math.abs(b.x - f.x)).toBeLessThan(3); // (it was ~250 px right of it, under the button)
+  expect(Math.abs(b.x - f.x)).toBeLessThan(1);
   // the value's day has the focus; a Sunday-first American week; marks and today
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-al-day'))).toBe('2026-11-10');
   expect(await page.locator('#date th').first().textContent()).toBe('Su');
@@ -505,5 +507,35 @@ test('virtual: only the rows in view render; scrolling loads the next pages and 
   // back to the top: the first row again
   await list.evaluate((el) => (el.scrollTop = 0));
   await expect.poll(() => page.locator('.alloy-virtual [role="listitem"]').first().getAttribute('aria-posinset')).toBe('1');
+  await check();
+});
+
+test('virtual: scrolling a little renders nothing; a row that grows keeps the view where it was', async () => {
+  const { page, check } = await open('virtual/');
+  const list = page.locator('.alloy-virtual');
+  await expect.poll(() => page.locator('#loaded').textContent()).toBe('100');
+  await list.evaluate((el) => (el.scrollTop = 40 * 30));
+  await expect.poll(() => page.locator('.alloy-virtual [role="listitem"]').first().getAttribute('aria-posinset')).not.toBe('1');
+  await page.waitForTimeout(100);
+  // a couple of rows either way stay within the rows rendered: no change to the page at all (no render per frame)
+  const changes = await list.evaluate(async (el) => {
+    let n = 0;
+    const mo = new MutationObserver((l) => (n += l.length));
+    mo.observe(el, { subtree: true, childList: true, attributes: true, characterData: true });
+    for (const dy of [20, 20, -40, 30, -30]) {
+      el.scrollTop += dy;
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
+    }
+    mo.disconnect();
+    return n;
+  });
+  expect(changes).toBe(0);
+  // a row above the view grows: the rows in view stay where they were on screen
+  const shown = page.locator('.alloy-virtual [role="listitem"]').nth(8);
+  const before = await shown.evaluate((el) => [el.getAttribute('aria-posinset'), el.getBoundingClientRect().top] as const);
+  await page.locator('.alloy-virtual [role="listitem"]').first().evaluate((el) => ((el as HTMLElement).style.paddingBlock = '30px'));
+  await page.waitForTimeout(150);
+  const row = page.locator(`.alloy-virtual [role="listitem"][aria-posinset="${before[0]}"]`);
+  expect(Math.abs((await row.evaluate((el) => el.getBoundingClientRect().top)) - before[1])).toBeLessThan(1);
   await check();
 });
