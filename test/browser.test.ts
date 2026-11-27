@@ -36,6 +36,8 @@ let cards = structuredClone(CARDS);
 let refuse = false;
 /** ms the mock server waits before answering a write (overlapping saves) */
 let slow = 0;
+/** writes the mock server holds at once, and the most it held (do saves overlap?) */
+let inflight = 0, most = 0;
 const writes: Array<[string, string, unknown]> = [];
 let server: Server;
 let base: string;
@@ -77,12 +79,14 @@ beforeAll(async () => {
       }
       if (url.pathname.startsWith('/api/') && slow && !(req as { waited?: boolean }).waited) {
         (req as { waited?: boolean }).waited = true;
+        most = Math.max(most, ++inflight);
         writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
         const again = () => req.emit('end');
         return void setTimeout(again, slow);
       }
       if (url.pathname.startsWith('/api/')) {
-        if (!(req as { waited?: boolean }).waited) writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
+        if ((req as { waited?: boolean }).waited) inflight--;
+        else writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
         if (refuse) return json(500, { error: 'no' });
         if (url.pathname === '/api/cards/order') {
           const { group, order } = JSON.parse(body) as { group: string; order: string[] };
@@ -123,6 +127,7 @@ beforeEach(() => {
   cards = structuredClone(CARDS);
   refuse = false;
   slow = 0;
+  inflight = most = 0;
   writes.length = 0;
 });
 
@@ -246,7 +251,7 @@ for (const [how, path, note] of [
       // the component gives the moved row's handle the focus back a frame later: as a person would, wait for it
       await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(`Move ${name}`);
     };
-    // each move shows at once; the next starts before the server has answered the last (300 ms), so they overlap
+    // each move shows at once; the next starts before the server has answered the last (300 ms): the saves wait in turn
     await move('Alpha', 'End');
     await settled(page, ['b', 'c', 'a']);
     await move('Beta', 'End');
@@ -260,6 +265,7 @@ for (const [how, path, note] of [
     await expect.poll(() => tasks.map((t) => t.id), { timeout: 5000 }).toEqual(['a', 'b', 'c']);
     await page.waitForTimeout(500);
     expect(await order(page)).toEqual(['a', 'b', 'c']);
+    expect(most).toBe(1); // one save at a time: the component queues its own, sinter queues an action's (data-sn-concurrency)
     await check();
   });
 
