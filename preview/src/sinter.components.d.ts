@@ -4,12 +4,11 @@ type ComponentName = "alloy-board" | "alloy-date" | "alloy-month" | "alloy-palet
 /** a slot that passes T to its fill, as a member of a component's props type: `cell: Slot<{ row: Row }>` */
 interface Slot<T> { readonly 'sinter.slot': T }
 declare module '*/alloy-board.html' {
-  type BoardError = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').BoardError;
   type BoardMove = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').BoardMove;
   type BoardText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').BoardText;
   const Base: typeof import('@tiaforge-ui/sinter/runtime/components').Component;
   /** the base of `@tiavision/sinter-alloy/sinter/components/alloy-board.ts`: props, events, refs and state as `alloy-board.html` declares them */
-  export class AlloyBoardComponent extends Base<{ lists: readonly any[]; listKey: (list: any) => string; listName?: (list: any) => string; items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; group: string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; text?: Partial<BoardText> }, { move: BoardMove; 'sort-error': BoardError }, {  }, { lifted: string; via: string; dx: number; dy: number; lineKey: string; lineSide: string; lineGroup: string; status: string; instructions: string; error: string }> {}
+  export class AlloyBoardComponent extends Base<{ lists: readonly any[]; listKey: (list: any) => string; listName?: (list: any) => string; items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; group: string; label: string; disabled?: boolean; text?: Partial<BoardText> }, { move: BoardMove }, {  }, { lifted: string; via: string; dx: number; dy: number; lineKey: string; lineSide: string; lineGroup: string; status: string; instructions: string }> {}
 }
 declare module '*/alloy-date.html' {
   type DateText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').DateText;
@@ -28,7 +27,7 @@ declare module '*/alloy-palette.html' {
   type PaletteText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').PaletteText;
   const Base: typeof import('@tiaforge-ui/sinter/runtime/components').Component;
   /** the base of `@tiavision/sinter-alloy/sinter/components/alloy-palette.ts`: props, events, refs and state as `alloy-palette.html` declares them */
-  export class AlloyPaletteComponent extends Base<{ label: string; src?: string; commands?: readonly PaletteCommand[]; keys?: 'mod+k' | false; text?: Partial<PaletteText> }, { pick: PaletteCommand }, { open: HTMLElementTagNameMap["button"] }, { q: string; results: any[]; loading: boolean; mac: boolean }> {}
+  export class AlloyPaletteComponent extends Base<{ label: string; src?: string; commands?: readonly PaletteCommand[]; keys?: 'mod+k' | false; text?: Partial<PaletteText> }, { pick: PaletteCommand }, { open: HTMLElementTagNameMap["button"]; dialog: HTMLElementTagNameMap["dialog"]; field: HTMLElementTagNameMap["input"] }, { q: string; results: any[]; loading: boolean; mac: boolean }> {}
 }
 declare module '*/alloy-range.html' {
   type DateRange = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').DateRange;
@@ -39,11 +38,10 @@ declare module '*/alloy-range.html' {
 }
 declare module '*/alloy-sortable.html' {
   type Move = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').Move;
-  type SortError = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').SortError;
   type SortableText = import('../../node_modules/@tiavision/sinter-alloy/sinter/sinter.types').SortableText;
   const Base: typeof import('@tiaforge-ui/sinter/runtime/components').Component;
   /** the base of `@tiavision/sinter-alloy/sinter/components/alloy-sortable.ts`: props, events, refs and state as `alloy-sortable.html` declares them */
-  export class AlloySortableComponent extends Base<{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText> }, { move: Move; 'sort-error': SortError }, {  }, { lifted: string; via: string; dy: number; lineKey: string; lineSide: string; status: string; instructions: string; error: string }> {}
+  export class AlloySortableComponent extends Base<{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText> }, { move: Move }, {  }, { lifted: string; via: string; dy: number; lineKey: string; lineSide: string; status: string; instructions: string }> {}
 }
 declare module '*/alloy-split.html' {
   const Base: typeof import('@tiaforge-ui/sinter/runtime/components').Component;

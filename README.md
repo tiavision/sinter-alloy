@@ -20,23 +20,27 @@ design, the decisions and the open questions are in [docs/DESIGN.md](docs/DESIGN
 ```html
 <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
 
-<alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
-                                resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
-  <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
-</alloy-sortable>
+<main data-sn-state="{ failed: false }">
+  <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
+                  data-sn-put="/api/tasks/order" data-sn-trigger="move"
+                  data-sn-body="{ order: alloy.keysAfter(tasks, $event.detail, (t) => t.id) }"
+                  data-sn-optimistic="merge(tasks.find((t) => t.id === $event.detail.key), { rank: alloy.between(tasks, $event.detail, 'rank') })"
+                  data-sn-then="failed = false" data-sn-catch="failed = true">
+    <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
+  </alloy-sortable>
+  <template data-sn-if="failed"><p role="alert">The new order could not be saved.</p></template>
+</main>
 ```
 
-That is all a page writes, as `paginate` is all a paged list needs. The list renders in the first frame like any
-sinter markup. A drop moves the row at once (an optimistic merge of its `rank` in the page's store: the resource's
-`order` sorts it into place) and saves the new order with one request of a fixed shape:
-
-```
-PUT /api/tasks/order      { "order": ["c", "a", "b"] }      → any 2xx (an answer holding the list's items is applied by key)
-```
-
-A refused request drops the change (the row goes back) and shows a note in the component. A second tab follows
-through the server's own events, as for any change. An API of another shape: leave out `resource` and `save`, handle
-the `move` event and send what that API wants (fixtures/manual.html).
+The components move things; the page saves them, the way it saves anything in sinter. The list renders in the first
+frame like any sinter markup. A drop emits `move`, and the action on the component's tag sends it: the optimistic
+change moves the row at once (`alloy.between` gives it a `rank` between its new neighbours', and the resource's
+`order` sorts it into place), the body is whatever the API wants (here every key in its new order), and `sinter
+check` checks the request against the API's description like any other. sinter sends the saves of quick moves one
+after another (an action's `data-sn-concurrency` is `queue`) and drops a refused one's change, so the row goes back;
+the page says so. With an OpenAPI spec, the server's answer (renumbered ranks) is written through; without one, add
+`refresh(tasks)` to `data-sn-then` (fixtures/index.html). A second tab follows through the server's own events, as for
+any change. Needs sinter 0.23 (`$event` in `data-sn-optimistic`).
 
 ## Install
 
@@ -49,12 +53,12 @@ npm install https://codeload.github.com/tiavision/sinter-alloy/tar.gz/<commit>
 ```js
 // vite.config.js
 sinter({ libraries: ['@tiavision/sinter-alloy'] }),
-// one sinter for the app and the library: the components find the page's app through sinter's `instance()`
+// one sinter for the app and the library: the palette finds the page's app through sinter's `instance()`
 resolve: { dedupe: ['@tiaforge-ui/sinter', '@tiaforge-ui/temper'] },
 ```
 
-`dedupe` matters when the library is linked from a checkout (`npm link`, `file:`): its own `node_modules` then holds a
-second sinter, and a self-saving sortable or board would find no app and save nothing.
+`dedupe` matters when the library is linked from a checkout (`npm link`, `file:`) with sinter before 0.23: its own
+`node_modules` then holds a second sinter, and the palette would find no app (sinter 0.23's plugin dedupes it).
 
 ```ts
 // src/sinter.helpers.ts
@@ -89,13 +93,11 @@ sortable and the board, `sheet.css` for the palette) when the app imports module
 | `keyOf` | a row's key (unique, stable) |
 | `nameOf` | its name, for the handle's label and the announcements (default: the key) |
 | `label` | the list's accessible name |
-| `resource`, `save`, `field` | the round trip: the resource's name; the full URL of `PUT { order }` and the sort field, which from sinter 0.23 default to the resource's own (`<src>/order` and its `order`; before, `save` is needed and the field defaults to `sort_order`). `resource` stays until sinter passes a resource handle as a prop (docs/DESIGN.md, S9) |
 | `disabled` | no handles, nothing moves |
 | `quiet` | handles show on hover and focus only (always on touch screens) |
 | `text` | the words, for another language (`SortableText`, English by default) |
 | slot `item` | a row: sees the page's scope plus `$slot.item`, `$slot.index` |
-| event `move` | `Move`: `{ key, from, to, after, before, via }` (`to` in the list without the item; `after`/`before` the new neighbours' keys); cancelable: preventing it skips the component's own save |
-| event `sort-error` | `{ move, error }` after a refused save; preventing it hides the component's note |
+| event `move` | `Move`: `{ key, from, to, after, before, via }` (`to` in the list without the item; `after`/`before` the new neighbours' keys): what the page's action saves, or its handler applies |
 
 Keyboard: the handle is a button. Space or Enter picks the row up, ArrowUp/ArrowDown/Home/End move it, Space or Enter
 drops it, Escape or leaving the list puts it back. Each step is announced in the component's live region, and the
@@ -104,7 +106,9 @@ shows where it drops, the nearest scrolling box scrolls near its edges, Escape c
 `touch-action: none`, so the list still scrolls on a phone.
 
 Helpers: `alloy.reorder(list, move)`, `alloy.keysAfter(list, move, keyOf)`, `alloy.between(list, move, field)` (the
-sort value that puts the item between its new neighbours), `alloy.moved(list, move, keyOf)`.
+sort value that puts the item between its new neighbours), `alloy.moved(list, move, keyOf)`. An API that takes one
+item and its new neighbour (`{ id, after }`) gets `$event.detail.after`; items kept in state move with
+`data-sn-on-move="items = alloy.reorder(items, $event.detail)"`.
 
 ## `<alloy-board>`
 
@@ -118,32 +122,30 @@ sort value that puts the item between its new neighbours), `alloy.moved(list, mo
 
 <alloy-board data-sn-with="{ lists: [{ id: 'todo', title: 'To do' }, { id: 'done', title: 'Done' }],
                              listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
-                             nameOf: (c) => c.title, group: 'status', label: 'Tasks',
-                             resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+                             nameOf: (c) => c.title, group: 'status', label: 'Tasks' }"
+             data-sn-put="/api/cards/order" data-sn-trigger="move"
+             data-sn-body="{ group: $event.detail.toGroup, order: alloy.columnAfter(cards, $event.detail, (c) => c.id, 'status') }"
+             data-sn-optimistic="merge(cards.find((c) => c.id === $event.detail.key),
+                                       { status: $event.detail.toGroup, rank: alloy.rankIn(cards, $event.detail, (c) => c.id, 'status', 'rank') })"
+             data-sn-catch="failed = true">
   <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
 </alloy-board>
 ```
 
-One list of cards; each card's `group` field (`status`) names its column, `field` (`rank`) orders a column. A drop
-moves the card at once (an optimistic merge of its group and rank) and saves the column it landed in:
-
-```
-PUT /api/cards/order      { "group": "done", "order": ["b", "a"] }      → any 2xx (an answer holding cards is applied by key)
-```
-
-The server sets the card's group and renumbers that column. A refused save puts the card back with a note. Without
-`resource` and `save`, a drop emits `move` (a `BoardMove`: `fromGroup`, `toGroup` besides the sortable's fields) and
-the page applies it; for cards kept in state, `alloy.regroup(cards, $event.detail, (c) => c.id, 'status')`.
+One list of cards; each card's `group` field (`status`) names its column. A drop emits `move` (a `BoardMove`:
+`fromGroup`, `toGroup` besides the sortable's fields), and the page saves it as with the sortable: here the card's
+group and rank at once (`alloy.rankIn`: between its new neighbours in that column), then the column it landed in
+(`alloy.columnAfter`: that column's keys in their new order), which the server renumbers. For cards kept in state,
+`data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status')"` (fixtures/board-state.html).
 
 | | |
 | --- | --- |
 | `lists`, `listKey`, `listName` | the columns in order, a column's key (the value of the cards' `group`), its name |
-| `items`, `keyOf`, `nameOf`, `group`, `field` | the cards, their key and name, the field naming their column, the sort field |
+| `items`, `keyOf`, `nameOf`, `group` | the cards, their key and name, the field naming their column |
 | `label`, `disabled`, `text` | the board's accessible name; no handles; the words (`BoardText`) |
-| `resource`, `save`, `field` | the round trip above (`save` and `field` from the resource from sinter 0.23, as the sortable's) |
 | slot `item` | a card: `$slot.item`, `$slot.index`, `$slot.list` |
 | slot `list` | a column's header: `$slot.list`, `$slot.count` (default: its name and a count badge) |
-| events | `move` (`BoardMove`, cancelable), `sort-error` (`{ move, error }`) |
+| event `move` | `BoardMove`: what the page's action saves, or its handler applies |
 
 Keyboard: Space or Enter on a card's handle picks it up, ArrowUp/ArrowDown/Home/End move it in its column,
 ArrowLeft/ArrowRight to the neighbouring column, Space or Enter drops, Escape puts it back; each step is announced
@@ -280,7 +282,6 @@ sinter/
   components/alloy-virtual.html/.ts, virtual.ts (the window)
   board.ts                         the board's state machine, pure
   sortable.ts                      the state machine, pure
-  save.ts                          the round trip's body and answer, pure
   order.ts                         the helpers, pure
   sinter.helpers.ts, sinter.types.ts, index.ts
 fixtures/                          pages for `sinter check` and the browser tests

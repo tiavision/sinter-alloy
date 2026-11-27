@@ -2,7 +2,6 @@
 import { expect, test } from 'vitest';
 import { cardIndex, cardLine, columnTotal, crossCard, dropCard, liftCard, placeAt, stepCard } from '../sinter/board.js';
 import { columnAfter, rankIn, regroup } from '../sinter/order.js';
-import { savedFields } from '../sinter/save.js';
 import type { BoardMove } from '../sinter/sinter.types.js';
 
 const cols = [{ group: 'todo', keys: ['a', 'b'] }, { group: 'doing', keys: ['c'] }, { group: 'done', keys: [] }];
@@ -68,10 +67,4 @@ test('helpers: the target column\'s order, the rank between neighbours there, an
   expect(regroup(cards, { ...mv, to: 1, after: 'c', before: null }, id, 'status').map((c) => c.id)).toEqual(['a', 'c', 'b']);
   expect(regroup(cards, { ...mv, toGroup: 'done', to: 0, before: null }, id, 'status').at(-1)).toEqual({ id: 'b', status: 'done', rank: 1 });
   expect(cards[1]!.status).toBe('todo'); // the input untouched
-});
-
-test('savedFields: the group and rank of an answer\'s cards, by key', () => {
-  expect(savedFields({ cards: [{ id: 'b', status: 'doing', rank: 0, title: 'x' }, { id: 'c' }] }, (x) => (x as { id: string }).id, ['status', 'rank']))
-    .toEqual([['b', { status: 'doing', rank: 0 }]]);
-  expect(savedFields(null, (x) => String(x), ['rank'])).toEqual([]);
 });

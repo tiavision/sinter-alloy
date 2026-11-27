@@ -52,7 +52,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette', 'virtual', 'page-saved'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette', 'virtual'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -196,7 +196,7 @@ async function settled(p: Page, want: string[]) {
   await expect.poll(() => order(p), { timeout: 3000 }).toEqual(want);
 }
 
-test('a mouse drag saves the order itself: the row moves at once, the server gets the whole order', async () => {
+test('a mouse drag: the row moves at once, the page\'s action sends the whole order', async () => {
   const { page, check } = await open('');
   const from = (await handle(page, 'Gamma').boundingBox())!;
   const to = (await page.locator('li[data-al-key="a"]').boundingBox())!;
@@ -215,7 +215,7 @@ test('a mouse drag saves the order itself: the row moves at once, the server get
   await check();
 });
 
-test('a keyboard move saves too; a refused one goes back with the note', async () => {
+test('a keyboard move is saved too; a refused one goes back with the page\'s note', async () => {
   const { page, check } = await open('');
   await handle(page, 'Alpha').focus();
   await page.keyboard.press('Space');
@@ -229,59 +229,39 @@ test('a keyboard move saves too; a refused one goes back with the note', async (
   await page.keyboard.press('Home');
   await page.keyboard.press('Space');
   await settled(page, ['b', 'c', 'a']);
-  await expect.poll(() => page.locator('.alloy-sortable [role="alert"]').textContent()).toBe('The new order could not be saved.');
+  await expect.poll(() => page.locator('main > [role="alert"]').textContent()).toBe('The new order could not be saved; the row is back where it was.');
   expect(writes.map((w) => w[2])).toEqual([{ order: ['b', 'c', 'a'] }, { order: ['a', 'b', 'c'] }]);
   await check();
 });
 
-// ── the same list saved two ways: by the component (index.html) and by the page (page-saved.html) ──
-
-for (const [how, path, note] of [
-  ['the component saves', '', '.alloy-sortable [role="alert"]'],
-  ['the page saves', 'page-saved/', 'main > [role="alert"]'],
-] as const) {
-  test(`${how}: three fast moves while the server is slow end in the order shown, saved in that order`, async () => {
-    const { page, check } = await open(path);
-    slow = 300;
-    const move = async (name: string, key: string) => {
-      await handle(page, name).focus();
-      await page.keyboard.press('Space');
-      await page.keyboard.press(key);
-      await page.keyboard.press('Space');
-      // the component gives the moved row's handle the focus back a frame later: as a person would, wait for it
-      await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(`Move ${name}`);
-    };
-    // each move shows at once; the next starts before the server has answered the last (300 ms): the saves wait in turn
-    await move('Alpha', 'End');
-    await settled(page, ['b', 'c', 'a']);
-    await move('Beta', 'End');
-    await settled(page, ['c', 'a', 'b']);
-    await move('Gamma', 'End');
-    await settled(page, ['a', 'b', 'c']);
-    expect(writes.length).toBeLessThan(3); // still in flight: not all have been answered (the mock records on arrival)
-    await expect.poll(() => writes.length, { timeout: 5000 }).toBe(3);
-    // the last order sent is the order shown, and the server ends with it
-    expect(writes.at(-1)![2]).toEqual({ order: ['a', 'b', 'c'] });
-    await expect.poll(() => tasks.map((t) => t.id), { timeout: 5000 }).toEqual(['a', 'b', 'c']);
-    await page.waitForTimeout(500);
-    expect(await order(page)).toEqual(['a', 'b', 'c']);
-    expect(most).toBe(1); // one save at a time: the component queues its own, sinter queues an action's (data-sn-concurrency)
-    await check();
-  });
-
-  test(`${how}: a refused order goes back, with a note`, async () => {
-    const { page, check } = await open(path);
-    refuse = true;
-    await handle(page, 'Alpha').focus();
+test('three fast moves while the server is slow end in the order shown, saved one after another', async () => {
+  const { page, check } = await open('');
+  slow = 300;
+  const move = async (name: string, key: string) => {
+    await handle(page, name).focus();
     await page.keyboard.press('Space');
-    await page.keyboard.press('End');
+    await page.keyboard.press(key);
     await page.keyboard.press('Space');
-    await expect.poll(() => writes.length).toBe(1);
-    await settled(page, ['a', 'b', 'c']);
-    await expect.poll(() => page.locator(note).count()).toBe(1);
-    await check();
-  });
-}
+    // the component gives the moved row's handle the focus back a frame later: as a person would, wait for it
+    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(`Move ${name}`);
+  };
+  // each move shows at once; the next starts before the server has answered the last (300 ms): the saves wait in turn
+  await move('Alpha', 'End');
+  await settled(page, ['b', 'c', 'a']);
+  await move('Beta', 'End');
+  await settled(page, ['c', 'a', 'b']);
+  await move('Gamma', 'End');
+  await settled(page, ['a', 'b', 'c']);
+  expect(writes.length).toBeLessThan(3); // still in flight: not all have been answered (the mock records on arrival)
+  await expect.poll(() => writes.length, { timeout: 5000 }).toBe(3);
+  // the last order sent is the order shown, and the server ends with it
+  expect(writes.at(-1)![2]).toEqual({ order: ['a', 'b', 'c'] });
+  await expect.poll(() => tasks.map((t) => t.id), { timeout: 5000 }).toEqual(['a', 'b', 'c']);
+  await page.waitForTimeout(500);
+  expect(await order(page)).toEqual(['a', 'b', 'c']);
+  expect(most).toBe(1); // one save at a time: sinter queues an action's runs (data-sn-concurrency)
+  await check();
+});
 
 test('a touch drag from the handle moves a row on a phone', async () => {
   const { page, check } = await open('', phone);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// The board fixtures rendered with the real script: a keyboard move across columns moves the card at once and saves
-// the target column; the answer's values are applied; a refused save rolls back with the note; cards in state move by
+// The board fixtures rendered with the real script: a keyboard move across columns moves the card at once and the
+// page's action saves the target column; the server's values come back; a refused save rolls back with the note; cards in state move by
 // the page's own handler. The pointer is the browser test's.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -36,8 +36,20 @@ const server: RouteResponse = (call) => {
   return { cards: order.map((id, rank) => ({ ...CARDS.find((c) => c.id === id)!, status: group, rank })) };
 };
 
+/** the server's cards: a save the route answers with a 2xx sets the card's group and renumbers that column */
+let cards = CARDS;
 async function mount(save: RouteResponse) {
-  const requests = mockRequests({ 'GET /api/cards': CARDS, 'PUT /api/cards/order': save });
+  cards = CARDS;
+  const put: RouteResponse = async (call, req) => {
+    const res = await (typeof save === 'function' ? save(call, req) : save);
+    const status = (res as { status?: number } | null)?.status ?? 200;
+    if (status < 300) {
+      const { group, order } = call.body as { group: string; order: string[] };
+      cards = [...cards.filter((c) => !order.includes(c.id)), ...order.map((id, rank) => ({ ...cards.find((c) => c.id === id)!, status: group, rank }))];
+    }
+    return res;
+  };
+  const requests = mockRequests({ 'GET /api/cards': () => cards, 'PUT /api/cards/order': put });
   const r = await render(read('fixtures/board.html'), { components, scripts, requests, helpers: { alloy }, strict: true });
   await r.settle();
   const handle = (k: string) => r.root.querySelector<HTMLElement>(`li[data-al-key="${k}"] > .al-handle`)!;
@@ -88,7 +100,7 @@ test('to an empty column, and a refused save puts the card back with the note', 
   res.release();
   await settle();
   expect(board(root)).toEqual({ todo: ['a', 'b'], doing: ['c'], done: [] });
-  expect(root.querySelector('.alloy-board [role="alert"]')!.textContent).toBe('The move could not be saved.');
+  expect(root.querySelector('main > [role="alert"]')!.textContent).toBe('The move could not be saved; the card is back where it was.');
 });
 
 test('cards in state: the page applies the move itself; its own column headers', async () => {

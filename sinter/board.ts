@@ -10,7 +10,6 @@ export const BOARD_ENGLISH: BoardText = {
   moved: (name, list, position, total) => `${name}: ${list}, position ${position} of ${total}.`,
   dropped: (name, list, position, total) => `Dropped ${name} in ${list} at position ${position} of ${total}.`,
   cancelled: (name, list, position) => `Move cancelled. ${name} is back in ${list} at position ${position}.`,
-  failed: 'The move could not be saved.',
 };
 
 export interface Column {

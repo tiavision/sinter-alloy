@@ -2,19 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>@tiavision/sinter-alloy: a board that saves its own moves</title>
+  <title>@tiavision/sinter-alloy: a board saved by the page</title>
 </head>
 <body>
-  <!-- Cards from an API, each in a column by `status`, ordered by `rank`. A drop moves the card at once (an optimistic
-       merge of its status and rank) and saves the target column: PUT /api/cards/order { group, order }. -->
+  <!-- Cards from an API, each in a column by `status`, ordered by `rank`. The board reports a drop (`move`); an action
+       on its tag moves the card at once (an optimistic merge of its status and rank) and saves the target column:
+       PUT /api/cards/order { group, order }. A refused one goes back, with the page's note. -->
   <sn-resource name="cards" src="/api/cards" key="id" order="rank" type="Card[]"></sn-resource>
-  <main>
+  <main data-sn-state="{ failed: false }">
     <alloy-board data-sn-with="{ lists: [{ id: 'todo', title: 'To do' }, { id: 'doing', title: 'Doing' }, { id: 'done', title: 'Done' }],
                                  listKey: (c) => c.id, listName: (c) => c.title, items: cards, keyOf: (c) => c.id,
-                                 nameOf: (c) => c.title, group: 'status', label: 'Tasks',
-                                 resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+                                 nameOf: (c) => c.title, group: 'status', label: 'Tasks' }"
+                 data-sn-put="/api/cards/order" data-sn-trigger="move"
+                 data-sn-body="{ group: $event.detail.toGroup, order: alloy.columnAfter(cards, $event.detail, (c) => c.id, 'status') }"
+                 data-sn-optimistic="merge(cards.find((c) => c.id === $event.detail.key),
+                                           { status: $event.detail.toGroup, rank: alloy.rankIn(cards, $event.detail, (c) => c.id, 'status', 'rank') })"
+                 data-sn-then="failed = false; refresh(cards)" data-sn-catch="failed = true">
       <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-board>
+    <template data-sn-if="failed"><p role="alert" data-sn-text="'The move could not be saved; the card is back where it was.'"></p></template>
   </main>
 </body>
 </html>

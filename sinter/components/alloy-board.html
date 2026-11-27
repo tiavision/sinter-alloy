@@ -9,17 +9,24 @@
     <article slot="item" data-sn-text="$slot.item.title"></article>
   </alloy-board>
 
-  One resource of cards, each in a column by its `group` field (`status`), ordered by `field` (`rank`). Saving it
-  itself (`resource` and `save`): a drop merges the card's group and rank (between its new neighbours') as an
-  optimistic layer of the page's store, so it moves at once; then `PUT <save> { group, order }`, `order` every key of
-  the target column in its new order (the server sets the card's group and renumbers that column); one request at a
-  time; an answer holding the cards has their group and rank applied by key; a failure rolls back, shows
-  `text.failed` and emits `sort-error`. `save` and `field` default to the resource's own as in <alloy-sortable>
-  (sinter 0.23+). Without `resource` (with sinter 0.22: without `save`), a drop only emits `move` (a BoardMove) and the
-  page applies it (alloy.regroup for cards kept in state).
+  One list of cards, each in a column by its `group` field (`status`). The page saves a drop, as with
+  <alloy-sortable>: a drop emits `move` (a BoardMove: the card's key, its old and new column, its index in the new one
+  and its new neighbours there), and an action on the tag sends it with an optimistic change:
+
+  <sn-resource name="cards" src="/api/cards" key="id" order="rank"></sn-resource>
+  <alloy-board data-sn-with="{ lists: columns, listKey: (c) => c.id, items: cards, keyOf: (c) => c.id, group: 'status', label: 'Board' }"
+               data-sn-put="/api/cards/order" data-sn-trigger="move"
+               data-sn-body="{ group: $event.detail.toGroup, order: alloy.columnAfter(cards, $event.detail, (c) => c.id, 'status') }"
+               data-sn-optimistic="merge(cards.find((c) => c.id === $event.detail.key),
+                                         { status: $event.detail.toGroup, rank: alloy.rankIn(cards, $event.detail, (c) => c.id, 'status', 'rank') })"
+               data-sn-catch="failed = true">…</alloy-board>
+
+  `alloy.columnAfter` is the target column's keys in their new order, `alloy.rankIn` a rank between the card's new
+  neighbours'; the saves of quick moves go one after another, a refused one goes back. Cards kept in state move with
+  `data-sn-on-move="cards = alloy.regroup(cards, $event.detail, (c) => c.id, 'status')"`.
 
   - lists: the columns, in order; listKey: a column's key (the value of the cards' `group` field); listName: its name.
-  - items, keyOf, nameOf, group (the field naming a card's column), field (the sort field, default 'sort_order').
+  - items, keyOf, nameOf, group (the field naming a card's column).
   - label: the board's accessible name. disabled: no handles. text: the words (BoardText; English by default).
   - slot item ($slot.item, $slot.index, $slot.list): a card. slot list ($slot.list, $slot.count): a column's header.
   - Keys on a card's handle: Space or Enter picks it up, ArrowUp/ArrowDown/Home/End move it in its column,
@@ -30,8 +37,8 @@
 
   The script (alloy-board.ts) writes only the component's state; the state machine is ../board.ts.
 -->
-<template data-sn-props="{ lists: readonly any[]; listKey: (list: any) => string; listName?: (list: any) => string; items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; group: string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; text?: Partial<BoardText>; item: Slot<{ item: any; index: number; list: any }>; list: Slot<{ list: any; count: number }> }" data-sn-emits="{ move: BoardMove; 'sort-error': BoardError }">
-  <div class="alloy-board" data-sn-state="{ lifted: '', via: '', dx: 0, dy: 0, lineKey: '', lineSide: '', lineGroup: '', status: '', instructions: '', error: '' }"
+<template data-sn-props="{ lists: readonly any[]; listKey: (list: any) => string; listName?: (list: any) => string; items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; group: string; label: string; disabled?: boolean; text?: Partial<BoardText>; item: Slot<{ item: any; index: number; list: any }>; list: Slot<{ list: any; count: number }> }" data-sn-emits="{ move: BoardMove }">
+  <div class="alloy-board" data-sn-state="{ lifted: '', via: '', dx: 0, dy: 0, lineKey: '', lineSide: '', lineGroup: '', status: '', instructions: '' }"
        data-sn-class="{ dragging: via === 'pointer' }">
     <div class="al-columns" role="group" data-tm-layout="row" data-tm-gap="md" data-tm-align="start" data-tm-wrap="none" data-tm-scroll data-sn-attr="{ 'aria-label': label }">
       <template data-sn-for="l in lists" data-sn-key="listKey(l)">
@@ -62,7 +69,6 @@
       </template>
     </div>
     <div class="al-status" data-tm-sr-only role="status" data-sn-text="status"></div>
-    <template data-sn-if="error"><p role="alert" data-tm-tone="danger" data-tm-pad="xs" data-sn-text="error"></p></template>
   </div>
 </template>
 <style>

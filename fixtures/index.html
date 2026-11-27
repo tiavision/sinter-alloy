@@ -2,18 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>@tiavision/sinter-alloy: a sortable list that saves its own order</title>
+  <title>@tiavision/sinter-alloy: a sortable list saved by the page</title>
 </head>
 <body>
-  <!-- A list from an API, kept sorted by `rank`. The component saves a drop itself: the moved row's rank goes between
-       its new neighbours' at once (an optimistic layer of the page's store), then PUT /api/tasks/order { order: [...] };
-       a refused request puts the row back and shows a note in the component. -->
+  <!-- A list from an API, kept sorted by `rank`. The component reports a drop (`move`); an action on its tag saves it:
+       the moved row's rank goes between its new neighbours' at once (the optimistic change), then
+       PUT /api/tasks/order { order: [...] }; sinter sends the saves of quick moves one after another. A refused one
+       rolls the change back (the row goes back) and the page shows its note. The answer's renumbered ranks: without an
+       OpenAPI spec nothing writes them through, so the list is loaded again. -->
   <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
-  <main>
-    <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
-                                    resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
+  <main data-sn-state="{ failed: false }">
+    <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
+                    data-sn-put="/api/tasks/order" data-sn-trigger="move"
+                    data-sn-body="{ order: alloy.keysAfter(tasks, $event.detail, (t) => t.id) }"
+                    data-sn-optimistic="merge(tasks.find((t) => t.id === $event.detail.key), { rank: alloy.between(tasks, $event.detail, 'rank') })"
+                    data-sn-then="failed = false; refresh(tasks)" data-sn-catch="failed = true">
       <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
     </alloy-sortable>
+    <template data-sn-if="failed"><p role="alert" data-sn-text="'The new order could not be saved; the row is back where it was.'"></p></template>
   </main>
 </body>
 </html>

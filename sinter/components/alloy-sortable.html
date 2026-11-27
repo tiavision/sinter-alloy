@@ -1,41 +1,36 @@
 <!--
   alloy-sortable: a list whose rows the user reorders, with a pointer (mouse, touch, pen) or the keyboard. Public.
 
-  <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, nameOf: (f) => f.display_name, label: 'Folders' }"
-                  data-sn-on-move="mv = $event.detail; run('folders-order')">
-    <a slot="item" data-tm-grow data-sn-href="/folder/{$slot.item.folder_id}" data-sn-text="$slot.item.display_name"></a>
+  <alloy-sortable data-sn-with="{ items: names, keyOf: (n) => n, label: 'Names' }"
+                  data-sn-on-move="names = alloy.reorder(names, $event.detail)">
+    <span slot="item" data-tm-grow data-sn-text="$slot.item"></span>
   </alloy-sortable>
 
   The list renders in the first frame like the page's own markup: the rows are a data-sn-for over `items`, each row
   the app's `item` fill (it sees the page's scope and $slot.item, $slot.index). The component owns the row's frame
   only: a grip handle before the fill, and the row's look while it is moved.
 
-  Saving it itself (the usual case): name the resource and where the order goes, and the component does the round trip
-  against one API shape, `PUT <save> { order: [key, …] }` (every key of the list, in its new order; the server
-  renumbers; any 2xx; an answer that holds the list's items has their `field` applied by key):
+  The page saves a drop: the component changes nothing itself. A drop emits `move` (a Move: key, from, to, the new
+  neighbours' keys), and an action on the component's tag sends it, with an optimistic change that moves the row at
+  once (sinter's actions on a component's tag; `$event.detail` is the Move):
 
-  <sn-resource name="folders" src="/email/folders" order="sort_order"></sn-resource>
-  <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, label: 'Folders',
-                                  resource: 'folders', save: '/api/email/folders/order' }">…</alloy-sortable>
+  <sn-resource name="folders" src="/email/folders" key="folder_id" order="sort_order"></sn-resource>
+  <alloy-sortable data-sn-with="{ items: folders, keyOf: (f) => f.folder_id, label: 'Folders' }"
+                  data-sn-put="/email/folders/order" data-sn-trigger="move"
+                  data-sn-body="{ order: alloy.keysAfter(folders, $event.detail, (f) => f.folder_id) }"
+                  data-sn-optimistic="merge(folders.find((f) => f.folder_id === $event.detail.key),
+                                            { sort_order: alloy.between(folders, $event.detail, 'sort_order') })"
+                  data-sn-catch="failed = true">…</alloy-sortable>
 
-  A drop merges the moved item's `field` (default 'sort_order', the resource's `order`) to a value between its new
-  neighbours' as an optimistic layer of the page's store, so the row moves at once; the request then goes out (one at
-  a time, in order); a failure drops the layer (the row goes back), shows `text.failed` in the component's alert line
-  and emits `sort-error`. With sinter 0.23 or later, `save` and `field` default to the resource's own: its URL with
-  `/order` added (`/api/email/folders/order`, the query kept) and its `order` attribute (`-rank`: the field rank, sorted
-  descending), so `resource: 'folders'` is enough; with 0.22 the handle has neither, and `save` is needed. `resource`
-  itself stays until sinter passes a resource handle as a prop (docs/DESIGN.md, S9).
-
-  Without `resource` (or, with sinter 0.22, without `save`) it changes nothing itself. A drop emits `move` (a Move: key, from, to, the new neighbours' keys); the page decides
-  what that means, usually one optimistic merge and one request: with `order="sort_order"` on the resource,
-  `merge(item, { sort_order: alloy.between(list, mv, 'sort_order') })` moves the row at once and rolls back with the
-  request. Until the page changes `items`, the row stays where it was; a live update from another tab (a server
-  event re-sorting the resource) moves it like any other change.
+  `alloy.between` is a value of the sort field between the new neighbours', so the store sorts the row into place;
+  sinter sends the saves of quick moves one after another (an action's `data-sn-concurrency` is `queue`), and a
+  refused one drops its optimistic layer (the row goes back): the page says so in its own alert line. The server's
+  answer (renumbered) is written through with an OpenAPI spec; without one, `data-sn-then="refresh(folders)"`. Any
+  API shape works the same way: the body is the page's. Until the page changes `items`, the row stays where it was; a
+  live update from another tab (a server event re-sorting the resource) moves it like any other change.
 
   - items: the rows, in their order. keyOf: a row's key (unique, stable). nameOf: its name for the handle's label
     and the announcements (default: the key). label: the list's accessible name.
-  - resource, field, save: the round trip above (`save` a full URL, the API's base included: sinter's request layer;
-    `field` and `save` from the resource when left out, sinter 0.23+).
   - disabled: no handles, nothing moves (a pending save, a filtered list whose order means nothing).
   - quiet: the handles show on hover and focus only (on a touch screen they always show).
   - text: the words, for another language (SortableText; English by default).
@@ -46,8 +41,8 @@
 
   The script (alloy-sortable.ts) writes only the component's state; the state machine is ../sortable.ts.
 -->
-<template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; resource?: string; field?: string; save?: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move; 'sort-error': SortError }">
-  <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '', error: '' }"
+<template data-sn-props="{ items: readonly any[]; keyOf: (item: any) => string; nameOf?: (item: any) => string; label: string; disabled?: boolean; quiet?: boolean; text?: Partial<SortableText>; item: Slot<{ item: any; index: number }> }" data-sn-emits="{ move: Move }">
+  <div class="alloy-sortable" data-sn-state="{ lifted: '', via: '', dy: 0, lineKey: '', lineSide: '', status: '', instructions: '' }"
        data-sn-class="{ quiet: !!quiet, dragging: via === 'pointer' }">
     <ul role="list" data-tm-layout="stack" data-tm-gap="none" data-sn-attr="{ 'aria-label': label }">
       <template data-sn-for="(it, i) in items" data-sn-key="keyOf(it)">
@@ -64,7 +59,6 @@
       </template>
     </ul>
     <div class="al-status" data-tm-sr-only role="status" data-sn-text="status"></div>
-    <template data-sn-if="error"><p role="alert" data-tm-tone="danger" data-tm-pad="xs" data-sn-text="error"></p></template>
   </div>
 </template>
 <style>

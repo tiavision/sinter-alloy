@@ -1,12 +1,9 @@
 // The script of <alloy-board>: pointer drags and keyboard moves of its cards, within a column and between columns. It
-// reads the boxes and writes only the component's state; a drop emits `move` (cancelable) and, with `resource` and
-// `save`, saves it through the page's store. The decisions are ../board.ts, the request ../order.ts and ../save.ts.
+// reads the boxes and writes only the component's state; a drop emits `move`, which the page saves or applies. The
+// decisions are ../board.ts.
 import { capture } from '../pointer.js';
-import { instance, type App } from '@tiaforge-ui/sinter';
 import { AlloyBoardComponent } from './alloy-board.html';
 import { BOARD_ENGLISH, cardIndex, cardLine, columnTotal, crossCard, dropCard, liftCard, placeAt, stepCard, type BoardDrag, type Column } from '../board.js';
-import { columnAfter, rankIn } from '../order.js';
-import { savedFields, saveTarget, type Handle } from '../save.js';
 import type { BoardMove, BoardText, Move } from '../sinter.types.js';
 
 const EDGE = 40, SPEED = 14;
@@ -26,7 +23,6 @@ export class AlloyBoard extends AlloyBoardComponent {
   #drag: BoardDrag | null = null;
   #pointer: PointerDrag | null = null;
   #refocus: string | null = null;
-  #queue: Promise<unknown> = Promise.resolve();
 
   connected() {
     const signal = this.#stop.signal, root = this.root;
@@ -140,36 +136,7 @@ export class AlloyBoard extends AlloyBoardComponent {
     }
     this.state.status = t.dropped(name, this.#listName(move.toGroup), move.to + 1, total);
     if (via === 'keyboard') this.#refocus = d.key;
-    if (this.emit('move', move)) this.#save(move);
-  }
-
-  /** `resource` and `save`: the card's group and rank at once, then PUT <save> { group, order } */
-  #save(move: BoardMove) {
-    const { resource, group } = this.props;
-    if (!resource) return;
-    const app = mounted(this.root);
-    if (!app) return;
-    const res = app.resource(resource);
-    // sinter 0.23's handle has `src` and `order`; 0.22's has neither (its type too)
-    const target = saveTarget(res as unknown as Handle, this.props, location.href);
-    if (!target) return;
-    const { url, field, descending } = target;
-    const list = res.value() as readonly Record<string, unknown>[];
-    const keyOf = (x: object) => res.keyOf(x as Record<string, unknown>);
-    if (!list.some((x) => keyOf(x) === move.key)) return;
-    const order = columnAfter(list, move, keyOf, group);
-    const rank = rankIn(list, move, keyOf, group, field, descending);
-    const send = () => app.request(url, { method: 'PUT', body: { group: move.toGroup, order } });
-    const run = () => (this.#queue = this.#queue.then(send, send));
-    app.optimistic(() => res.merge(move.key, { [group]: move.toGroup, [field]: rank }), run).then(
-      (answer) => {
-        this.state.error = '';
-        for (const [key, fields] of savedFields(answer, keyOf, [group, field])) if (res.has(key)) res.merge(key, fields);
-      },
-      (error: unknown) => {
-        if (this.emit('sort-error', { move, error })) this.state.error = this.#text().failed;
-      },
-    );
+    this.emit('move', move);
   }
 
   #key(e: KeyboardEvent) {
@@ -265,13 +232,6 @@ export class AlloyBoard extends AlloyBoardComponent {
     this.#line();
     if (scrolling) this.#schedule();
   }
-}
-
-function mounted(el: Element): App | null {
-  for (let n: Node | null = el; n; n = n.parentNode) {
-    try { return instance(n as Element | Document); } catch { /* not a mount root */ }
-  }
-  return null;
 }
 
 function asElement(t: EventTarget | null): Element | null {

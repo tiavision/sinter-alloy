@@ -70,41 +70,10 @@ test('the pointer picks the place by the rows\' middles; the line shows it, not 
   expect(lineAt({ ...d, at: 4 }, 2, 4)).toBeNull();
 });
 
-import { saveOrder, saved } from '../sinter/save.js';
-
-test('saveOrder: every key in its new order, and the moved item\'s new sort value', () => {
-  expect(saveOrder(rows, mv(0, 2), (r) => r.id, 'rank')).toEqual({ keys: ['b', 'c', 'a', 'd'], value: 2.5 });
-  expect(saveOrder(rows.slice(1), mv(0, 2), (r) => r.id, 'rank')).toBeNull(); // the item is gone
-});
-
-test('saved: the sort values of an answer that is the list, or holds it; nothing from other answers', () => {
-  const keyOf = (x: object) => (x as { id: string }).id;
-  expect(saved([{ id: 'a', rank: 1 }, { id: 'b', rank: 0 }], keyOf, 'rank')).toEqual([['a', 1], ['b', 0]]);
-  expect(saved({ tasks: [{ id: 'a', rank: 2 }, { id: 'b' }] }, keyOf, 'rank')).toEqual([['a', 2]]);
-  expect(saved(null, keyOf, 'rank')).toEqual([]);
-  expect(saved('ok', keyOf, 'rank')).toEqual([]);
-  expect(saved({ count: 3 }, keyOf, 'rank')).toEqual([]);
-});
-
 test('between in a list sorted descending: past an end goes the other way', async () => {
   const { midway } = await import('../sinter/order.js');
   expect(midway(null, 5, true)).toBe(6); // first place: above the first value
   expect(midway(5, null, true)).toBe(4); // last place: below the last value
   expect(midway(9, 5, true)).toBe(7);
   expect(midway(null, 5)).toBe(4);
-});
-
-test('saveTarget: the URL and field from the resource handle, the props over them', async () => {
-  const { saveTarget } = await import('../sinter/save.js');
-  const base = 'https://app.example/mail/';
-  expect(saveTarget({ src: '/api/email/folders', order: 'sort_order' }, {}, base))
-    .toEqual({ url: '/api/email/folders/order', field: 'sort_order', descending: false });
-  expect(saveTarget({ src: 'https://app.example/api/tasks/?list=3', order: '-rank' }, {}, base))
-    .toEqual({ url: '/api/tasks/order?list=3', field: 'rank', descending: true });
-  expect(saveTarget({ src: 'https://api.other/tasks', order: null }, {}, base))
-    .toEqual({ url: 'https://api.other/tasks/order', field: 'sort_order', descending: false });
-  expect(saveTarget({ src: '/api/tasks', order: '-rank' }, { save: '/api/tasks/reorder', field: 'pos' }, base))
-    .toEqual({ url: '/api/tasks/reorder', field: 'pos', descending: false });
-  // an older sinter's handle (no src) without `save`: nothing to save to
-  expect(saveTarget({}, {}, base)).toBeNull();
 });

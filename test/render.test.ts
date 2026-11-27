@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The fixture page rendered with sinter's testing module and the component's real script: a keyboard move emits
-// `move`, the page's optimistic merge puts the row in its new place before the server answers, the request carries
+// `move`, the page's action (on the component's tag) saves it: its optimistic merge puts the row in its new place before the server answers, the request carries
 // the new order, and a refused request puts the row back. jsdom lays nothing out, so the pointer is the browser
 // test's (test/browser.test.ts).
 import { readFileSync } from 'node:fs';
@@ -39,8 +39,17 @@ function held(res: { status: number; body?: unknown }) {
 /** a script's state write renders on the next task; `settle()` would also wait for a held request */
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+/** the server's list: a PUT the route answers with a 2xx renumbers it in the order sent (as the browser test's server) */
+let tasks = TASKS;
 async function mount(order: RouteResponse, html = page) {
-  const requests = mockRequests({ 'GET /api/tasks': TASKS, 'PUT /api/tasks/order': order, 'POST /api/tasks/move': order });
+  tasks = TASKS;
+  const put: RouteResponse = async (call, req) => {
+    const res = await (typeof order === 'function' ? order(call, req) : order);
+    const status = (res as { status?: number } | null)?.status ?? 200;
+    if (status < 300) tasks = (call.body as { order: string[] }).order.map((id, rank) => ({ ...TASKS.find((t) => t.id === id)!, rank }));
+    return res;
+  };
+  const requests = mockRequests({ 'GET /api/tasks': () => tasks, 'PUT /api/tasks/order': put, 'POST /api/tasks/move': order });
   const r = await render(html, { components, scripts, requests, helpers: { alloy }, storage: memoryStorage(), strict: true });
   await r.settle();
   const handle = (k: string) => r.root.querySelector<HTMLElement>(`li[data-al-key="${k}"] > .al-handle`)!;
@@ -95,10 +104,10 @@ test('a refused request puts the row back', async () => {
   res.release();
   await settle();
   expect(shown(root)).toEqual(['a', 'b', 'c']);
-  expect(root.querySelector('.alloy-sortable [role="alert"]')!.textContent).toBe('The new order could not be saved.');
+  expect(root.querySelector('main > [role="alert"]')!.textContent).toBe('The new order could not be saved; the row is back where it was.');
 });
 
-test('the server\'s answer (renumbered) replaces the fraction the optimistic change wrote', async () => {
+test('the server\'s order (renumbered) replaces the fraction the optimistic change wrote', async () => {
   // the server renumbers the order it was sent and answers the list
   const answer: RouteResponse = (call) => ({ tasks: (call.body as { order: string[] }).order.map((id, rank) => ({ ...TASKS.find((t) => t.id === id)!, rank })) });
   const { root, handle, settle } = await mount(answer);
@@ -133,7 +142,7 @@ test('moves made before an answer are sent one after another, each with the orde
   expect(requests.calls.filter((c) => c.method === 'PUT').map((c) => c.body)).toEqual([{ order: ['b', 'c', 'a'] }, { order: ['c', 'a', 'b'] }]);
 });
 
-test('without resource and save the page applies the move: another API shape', async () => {
+test('a page that applies the move itself: another API shape', async () => {
   const { root, handle, settle, requests } = await mount({ status: 204 }, manual);
   press(handle('c'));
   await settle();

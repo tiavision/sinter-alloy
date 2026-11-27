@@ -114,67 +114,70 @@ By value to caley (what users get, what code goes away, how often it is used), a
 ```html
 <sn-resource name="tasks" src="/api/tasks" key="id" order="rank" type="Task[]"></sn-resource>
 
-<alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks',
-                                resource: 'tasks', field: 'rank', save: '/api/tasks/order' }">
-  <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
-</alloy-sortable>
+<main data-sn-state="{ failed: false }">
+  <alloy-sortable data-sn-with="{ items: tasks, keyOf: (t) => t.id, nameOf: (t) => t.title, label: 'Tasks' }"
+                  data-sn-put="/api/tasks/order" data-sn-trigger="move"
+                  data-sn-body="{ order: alloy.keysAfter(tasks, $event.detail, (t) => t.id) }"
+                  data-sn-optimistic="merge(tasks.find((t) => t.id === $event.detail.key), { rank: alloy.between(tasks, $event.detail, 'rank') })"
+                  data-sn-then="failed = false" data-sn-catch="failed = true">
+    <span slot="item" data-tm-grow data-sn-text="$slot.item.title"></span>
+  </alloy-sortable>
+  <template data-sn-if="failed"><p role="alert">The new order could not be saved.</p></template>
+</main>
 ```
 
-That is the whole page side, as `paginate="…"` is the whole page side of a paged list. A first version made the page
-wire every move itself (state, a hidden action, `run()`, two helper calls: about ten lines, and one trap, S3); it
-was hard to use, so the component now owns the round trip.
+**The component moves, the page saves** (Q-S1). A drop emits `move`; the action on the component's tag (sinter's
+actions on a component's tag, `$event.detail` in body and optimistic change, sinter 0.23) saves it like any other
+change of the page:
 
-**The assumed API shape.**
-
-```
-PUT <save>      { "order": ["key", …] }      every key of the list, in its new order
-→ any 2xx       an answer that is the list, or an object holding it ({ "tasks": [...] }), has its `field` applied by key
-```
-
-The server renumbers the list 0…n−1 in that order, in one transaction. Chosen over "move one item"
-(`{ key, after }`) because it is idempotent (safe to retry; concurrent moves converge, the last full order wins),
-needs no fractional ranks on the server (plain integer columns), and is trivial to implement. Its limit: the whole
-list must be loaded, so it is not for paginated or filtered lists (a `move` shape for those is a later mode, Q-S4).
-caley's `PUT /api/email/folders/order` has this shape but for the body's name (`folder_ids`).
-
-**What the component does on a drop** (`resource` and `save` given):
-
-1. Emits `move` (cancelable). A page that prevents it does its own save; nothing else happens.
-2. In the page's store (`instance(document)`: `app.resource(resource)`, `app.optimistic(change, run)`), merges the
-   moved item's `field` (default `sort_order`) to a value between its new neighbours' (`alloy.between`). The
-   resource keeps `order="<field>"`, so the store sorts the row into place at once; that is the whole optimistic
-   reorder, one layer, rolled back by dropping it.
-3. Sends `PUT <save> { order }` through sinter's request layer (headers, 401 handling, allowed origins). Moves made
-   before an answer go out one after another, each with the order it made.
-4. On success: applies the answer's sort values by key, so the fractions become the server's integers. On failure:
-   the layer is dropped (the row goes back), `sort-error` `{ move, error }` is emitted (cancelable) and, unless
-   prevented, the component's alert line shows `text.failed`.
+1. The optimistic change merges the moved item's sort field to a value between its new neighbours'
+   (`alloy.between`). The resource keeps `order="<field>"`, so the store sorts the row into place at once; that is the
+   whole optimistic reorder, one layer, rolled back by dropping it.
+2. The request is the page's: any method, URL and body (here every key in its new order, `alloy.keysAfter`), checked
+   by `sinter check` against the API's description, sent through sinter's request layer. Quick moves go out one after
+   another (an action's `data-sn-concurrency` is `queue` outside forms), each with the order it made.
+3. On success, the server's answer (renumbered) is written through with an OpenAPI spec; without one,
+   `data-sn-then="refresh(tasks)"`. On failure, the layer is dropped (the row goes back) and `data-sn-catch` shows
+   the page's own note.
 
 A second tab (or device) follows through the server's own events (caley: `folders_changed` → `refresh`); an event
 that arrives while a move is pending is applied to the base and the pending layer stays on top (sinter's model).
 
-**Interim props, and the sinter asks behind them.** `resource` (the store name), `field` and `save` (a full URL,
-with the API's base) say what the resource already knows. Once sinter passes a resource handle as a prop (S9) and the
-handle exposes its resolved `src` and `order` (S10), they go: `items: tasks` alone is enough, `save` defaults to
-`<src>/order` and `field` to the resource's `order`. The resource name is not checked by `sinter check` until then.
+**Why not a component that saves itself.** An earlier version took `resource`, `save` and `field` and did the round
+trip in its script (`instance(document)`, `app.optimistic`, `app.request`) against one shape, `PUT <save> { order }`:
+one line of props per use instead of the action's five attributes. It went, because sinter does things one way: a
+save is an action in the markup, and a second way hidden in a script is one `sinter check` cannot see (the request was
+not checked against the API), one that takes a resource by its name as a string (which sinter's rules forbid), and
+one that fits only APIs of its shape. The page-wired form does everything the self-saving one did (both passed the
+same tests in Chromium, Firefox and WebKit: quick moves against a slow server ending in the order shown, a refused
+one rolled back with a note; both kept one save in flight) and fits any API. An early page-wired form needed state and a hidden `run()` target
+(about ten lines and one trap, S3), since the optimistic change could not read `$event` (S2); sinter 0.23 allows it.
+
+**A good API shape** for a whole list, the one the fixtures and caley use:
+
+```
+PUT /api/tasks/order      { "order": ["key", …] }      every key of the list, in its new order → 2xx
+```
+
+The server renumbers the list 0…n−1 in that order, in one transaction: idempotent (safe to retry; concurrent moves
+converge, the last full order wins), no fractional ranks on the server (plain integer columns). Its limit: the whole
+list must be loaded, so for paginated or filtered lists `{ id, after }` (`$event.detail.after`) fits better.
 
 **API.**
 
-- Props: `items: readonly any[]`, `keyOf(item): string`, `nameOf?(item): string`, `label: string`, `resource?`,
-  `field?`, `save?`, `disabled?`, `quiet?` (handles on hover/focus only; always on touch),
+- Props: `items: readonly any[]`, `keyOf(item): string`, `nameOf?(item): string`, `label: string`,
+  `disabled?`, `quiet?` (handles on hover/focus only; always on touch),
   `text?: Partial<SortableText>`.
 - Slot `item: Slot<{ item: any; index: number }>`: the app's row, in the app's scope. The component owns the row's
   frame (an `<li>` with a grip handle before the fill), so it can draw the row's moving state from its own state
   without touching slot content.
 - Events: `move: Move` — `{ key, from, to, after, before, via }`; `to` counts the list without the item (as `splice`
   puts it back), `after`/`before` are the new neighbours' keys, so a "put it after X" API needs nothing else.
-  `sort-error: SortError` — `{ move, error }`. Both cancelable.
-- Helpers, for pages that save a move themselves: `reorder`, `keysAfter`, `between`, `moved`. `between(list, move,
+- Helpers, for the page's save: `reorder`, `keysAfter`, `between`, `moved`. `between(list, move,
   field)` is the key idea: halfway between the new neighbours' values (±1 past an end). Neighbours with equal values
   (a list never ordered: all `0`) cannot be split; the server's renumbered answer settles it.
-- Without `resource` and `save` the component only emits `move`, and the page applies it (fixtures/manual.html: a
-  hidden action with the same one-merge optimistic change). caley's mail sidebar still uses this form; moving it to
-  the self-saving one is the caley step left for later.
+- Items kept in state: `data-sn-on-move="items = alloy.reorder(items, $event.detail)"`; another API shape:
+  fixtures/manual.html (`POST /api/tasks/move { id, after }`).
 
 **Keyboard and accessibility.**
 
@@ -200,17 +203,17 @@ handle exposes its resolved `src` and `order` (S10), they go: `items: tasks` alo
 while dragging, and the lifted row following the pointer (`translateY` from state). The rest was alloy's until temper
 took it (T1–T3 below).
 
-**Runtime cost.** Script plus state machine: **2.2 kB gzip** minified (measured before the self-saving mode; that
-adds well under 1 kB: `save.ts` and the store calls); helpers (`order.ts`): 0.3 kB, foldable at build time. The markup is expanded per use like any component. Bundled with the pages that use it (the mail page),
+**Runtime cost.** Script plus state machine: **2.2 kB gzip** minified; helpers (`order.ts`): 0.3 kB, foldable at build time. The markup is expanded per use like any component. Bundled with the pages that use it (the mail page),
 nowhere else.
 
 **Tests.** In this repository: the state machine and helpers (every from→to pair checked against a store-like sort
-by `between`; the request body and the answer's values), `sinter check --strict` over the three fixtures, `render()`
-with the real script (keyboard move; the row moved before the answer; the body; a refused save rolls back with the
-note; the renumbered answer replacing the fractions; moves queued one after another; the page's own save; Escape;
-German words), and Chromium over the fixtures built with sinter and temper under a strict CSP (mouse drag with the
-drop line and the saved order after a reload, keyboard move and focus, a refused save, a touch drag on a phone
-viewport, the page's own request). In caley (the first, page-wired form): three mail page tests
+by `between`), `sinter check --strict` over the fixtures, `render()` with the real script and the page's action
+(keyboard move; the row moved before the answer; the body; a refused save rolls back with the page's note; the
+server's renumbered order replacing the fractions; moves queued one after another; another API shape; Escape; German
+words), and Chromium, Firefox and WebKit over the fixtures built with sinter and temper under a strict CSP (mouse drag
+with the drop line and the saved order after a reload, keyboard move and focus, a refused save, three quick moves
+against a slow server with one save in flight, a touch drag on a phone viewport, another API's request). In caley:
+three mail page tests
 (keyboard move and the request body, a refused order goes back with a note, `folders_changed` re-sorts), the
 backend's reorder unit tests and cross-user case, and `npm run check:folders`, a Playwright check against the build
 on the demo backend: mouse drag (row follows, line placed, order at once, saved after reload), keyboard move with
@@ -225,8 +228,12 @@ accounts and calendars (`caldav_accounts.sort_order`; calendars would need a col
 
 ```html
 <alloy-board data-sn-with="{ lists: columns, listKey: (c) => c.id, listName: (c) => c.title, items: cards,
-                             keyOf: (c) => c.id, nameOf: (c) => c.title, group: 'status', label: 'Board',
-                             resource: 'cards', field: 'rank', save: '/api/cards/order' }">
+                             keyOf: (c) => c.id, nameOf: (c) => c.title, group: 'status', label: 'Board' }"
+             data-sn-put="/api/cards/order" data-sn-trigger="move"
+             data-sn-body="{ group: $event.detail.toGroup, order: alloy.columnAfter(cards, $event.detail, (c) => c.id, 'status') }"
+             data-sn-optimistic="merge(cards.find((c) => c.id === $event.detail.key),
+                                       { status: $event.detail.toGroup, rank: alloy.rankIn(cards, $event.detail, (c) => c.id, 'status', 'rank') })"
+             data-sn-catch="failed = true">
   <article slot="item" data-sn-text="$slot.item.title"></article>
 </alloy-board>
 ```
@@ -237,12 +244,12 @@ another day) and messages dropped on a mailbox.
 - One resource of cards with a group field (`status`) and a sort field: a move between columns is still one `merge`
   (both fields), so the same rollback and sync apply. The markup renders each column as a `data-sn-for` over
   `items.filter((x) => x[group] === listKey(l))`.
-- Assumed shape, the sortable's for one column: `PUT <save> { group, order }`, `order` every key of the target column
-  in its new order; the server sets the card's group and renumbers that column. Still one idempotent request. An
-  answer holding cards has their group and sort field applied by key.
+- Saved by the page as the sortable's: the fixtures' shape is the sortable's for one column, `PUT /api/cards/order
+  { group, order }`, `order` every key of the target column in its new order; the server sets the card's group and
+  renumbers that column. Still one idempotent request.
 - `BoardMove` extends `Move` with `fromGroup` and `toGroup` (`from` in the old column, `to` in the new one, counted
-  without the card); cancelable, as the sortable's. Helpers for pages that apply it themselves: `columnAfter` (the
-  target column's order), `rankIn` (the card's new sort value there), `regroup` (cards kept in state).
+  without the card). Helpers for the page's save: `columnAfter` (the target column's order), `rankIn` (the card's new
+  sort value there), `regroup` (cards kept in state).
 - Keyboard: as the sortable, plus ArrowLeft/ArrowRight move to the neighbouring column at the same index (or its end),
   and announcements name the column ("Beta: Doing, position 2 of 2"). Pointer: the column under the pointer (else the
   nearest), the place by the rows' middles; the card follows the pointer (`translate` from state); an empty column is
@@ -253,10 +260,10 @@ another day) and messages dropped on a mailbox.
 - Styling: temper attributes (`data-tm-layout`, `data-tm-scroll`, `data-tm-caption`, `data-tm-badge`, the ghost handle); scoped
   CSS with tokens for the column surface (`--tm-fill`), the card (`--tm-surface`, `--tm-border`), the lifted card, the
   drop line and the empty column's outline (T1–T3, plus a column surface).
-- Cost: **3.6 kB gzip** for the script with its state machine and the save (the sortable: 2.9 kB with its save).
+- Cost: under **3.6 kB gzip** for the script with its state machine (measured with the save it no longer has).
 - Tests: the state machine (within and across columns, ends, empty columns, the line, hit testing), the helpers, render
-  tests with the real script (keyboard across columns with the announcements, the request body, the answer, a refused
-  save, cards in state with custom headers) and Chromium (a drag to another column with the line and the saved state
+  tests with the real script and the page's action (keyboard across columns with the announcements, the request body,
+  the server's values, a refused save, cards in state with custom headers) and the three browsers (a drag to another column with the line and the saved state
   after a reload, a drag into an empty column, keyboard over state; strict CSP, no errors).
 
 ## 2. Split panes: `<alloy-split>` (built)
@@ -417,29 +424,27 @@ virtual list is the other half: it renders only the loaded rows in view.
 
 ## What sinter-alloy needs from sinter
 
-**Status:** in sinter's `main` (tiaforge/sinter#121–#123, not released yet): S10 (the handle's `src` and `order`:
-the sortable's and the board's `save` and `field` now default to the resource's own), S14 (refs inside a closed
+**Status:** in sinter's `main` (tiaforge/sinter#121–#123, not released yet): S14 (refs inside a closed
 dialog: the palette uses them, with a query as the fallback for 0.22), S15 (`$locale` is the page's `lang`; the
 calendar's own `lang` fallback stays for 0.22), one copy of sinter for a linked library (caley's `resolve.dedupe`
-becomes unneeded), `$event` in `data-sn-optimistic` and actions on a component's tag (a page-wired sortable needs no
-state and hidden `run()` target), the CSP note on first-frame `style` attributes (S12, docs). Still open, asked of
-sinter (its verdicts: later, each needing a design first): S13 (ids per use: the pickers open their popovers from script, which is correct as it is; the palette's field finds its list with an empty `data-sn-options`, so it works more than once per page, without `aria-controls`), S9 (a resource handle as
-a prop: `resource: 'folders'` stays), S6; S3 needs a reduced repro from caley. Found on the way: sinter linked into an app (`npm link`) breaks its
+becomes unneeded), `$event` in `data-sn-optimistic` (S2: the sortable and the board are saved by the page's action on their tag, with
+no state or hidden `run()` target), the CSP note on first-frame `style` attributes (S12, docs). Still open, asked of
+sinter (its verdicts: later, each needing a design first): S13 (ids per use: the pickers open their popovers from script, which is correct as it is; the palette's field finds its list with an empty `data-sn-options`, so it works more than once per page, without `aria-controls`), S6; S3 needs a reduced repro from caley. Found on the way: sinter linked into an app (`npm link`) breaks its
 own plugin, and it cannot be installed from a git commit (no `prepare`), so unreleased sinter is tested from a packed
 tarball.
 
 | | Need | Why | Found in |
 | --- | --- | --- | --- |
 | S1 | **Generic components**: type parameters on `data-sn-props`, inferred per use (`<template data-sn-props="<T>{ items: readonly T[]; keyOf: (item: T) => string; item: Slot<{ item: T }> }">`) | Today `items` is `any[]` and `$slot.item` is `any`: the app's fill loses type checking, and caley casts in a let (`/** @type {VirtualFolder} */ ($slot.item)`). Every alloy collection component (sortable, board, virtual, palette) has this. | spike |
-| S2 | **`$event` in `data-sn-optimistic` (and `data-sn-when`) of an action triggered by a component event**, or `data-sn-when` allowed on a component's tag | The natural wiring is the action on the tag, `data-sn-put="…" data-sn-trigger="move"` with `$event.detail` in body and optimistic change. The body accepts `$event`; the optimistic change does not (SN201), and `data-sn-when` cannot go on a component's tag (SN102), so a page needs state plus a hidden `run()` target. | spike |
-| S3 | **Investigate a `run('id')` that did nothing in a built page** | In caley's mail page, a hidden action span inside the sidebar `<aside data-sn-state="…">` was not started by `run()` in the build: the handler ran and set the state the target's `data-sn-when` reads, but no request, `then` or `catch` followed. The same markup works in `render()`, and moved to the page's top level (beside `#wipe`) it works. A nested state scope alone is not the cause: this repository's fixtures/manual.html has its target in a `<main data-sn-state>` and works in Chromium. The aside sits in a large page with embedded data, swaps and a permanent rail; a reduced repro from caley is the next step. The self-saving sortable no longer needs `run()`. | spike |
+| S2 | **Done (sinter 0.23).** **`$event` in `data-sn-optimistic` (and `data-sn-when`) of an action triggered by a component event**, or `data-sn-when` allowed on a component's tag | The natural wiring is the action on the tag, `data-sn-put="…" data-sn-trigger="move"` with `$event.detail` in body and optimistic change. The body accepts `$event`; the optimistic change does not (SN201), and `data-sn-when` cannot go on a component's tag (SN102), so a page needs state plus a hidden `run()` target. | spike |
+| S3 | **Investigate a `run('id')` that did nothing in a built page** | In caley's mail page, a hidden action span inside the sidebar `<aside data-sn-state="…">` was not started by `run()` in the build: the handler ran and set the state the target's `data-sn-when` reads, but no request, `then` or `catch` followed. The same markup works in `render()`, and moved to the page's top level (beside `#wipe`) it works. A nested state scope alone is not the cause: this repository's fixtures/manual.html has its target in a `<main data-sn-state>` and works in Chromium. The aside sits in a large page with embedded data, swaps and a permanent rail; a reduced repro from caley is the next step. The page-wired sortable no longer needs `run()` (S2). | spike |
 | S4 | **A component script's state writes flush with `flush()` in tests**, or document that they render on the next task | `render()` tests must `await settle()` (which also waits for held requests) or wait a task, to see what a script set. | spike |
 | S5 | **`render()` takes `libraries`**, and a library can import its own component scripts in its own tests | Apps glob a library's `node_modules` files into `components`/`scripts` (caley does it for sinter-mail and alloy). A library's own vitest needs a self-link in `node_modules` (alloy's `test/link.ts`) because sinter serves a script's `.html` base class only for a configured library. | spike |
 | S6 | `data-sn-options` able to mark an option that is not rendered (a callback or event the list answers by scrolling it in) | Virtualized lists and long palettes. | design |
 | S7 | Library messages: a library ships its own inlang messages, merged under its namespace, translated by the app | Every alloy component needs a `text` prop today (**Q-L1**). | design |
 | S8 | Optional lazy component scripts (a script that loads on first focus/pointerdown on its root) | The palette and pickers are idle on most page loads; markup must still render early. | design |
-| S9 | **A resource handle as a prop**: a prop typed `Resource<T>` (or a marker in `data-sn-props`) gets the store handle of the resource the use names (`items: tasks`), checked like store functions' arguments (SN301) | The self-saving sortable and the virtual list need the handle; today they take the resource's name as a string (`resource: 'tasks'`), which nothing checks, and find it with `instance(document).resource(name)`. With `T`, it also types the rows (S1). | after the spike |
-| S10 | **The store handle exposes its resolved `src` and its `order` field** | Then `save` defaults to `<src>/order` and `field` to `order`, and the sortable needs only `items`. Today the handle has `name`, `key`, `meta`, `get`, `merge`, … but neither. | after the spike |
+| S9 | **A resource handle as a prop**: a prop typed `Resource<T>` (or a marker in `data-sn-props`) gets the store handle of the resource the use names (`items: tasks`), checked like store functions' arguments (SN301) | Withdrawn for the sortable and the board (the page saves them); the virtual list could page itself with it, which a page's `data-sn-on-end` does today. With `T`, it also types the rows (S1). | after the spike |
+| S10 | **Withdrawn.** The store handle exposing its resolved `src` and its `order` field | It was for a self-saving sortable's defaults; sinter took it back, and the sortable no longer saves. | after the spike |
 | S11 | **Persisted state with a computed key, restored by the early script** (`data-sn-persist` whose key reads a prop) | The split keeps its size under `name`; restored by its script, after the first paint, the panes can move once on load. `data-sn-persist` takes a literal key, so a component used twice cannot persist each use. | split |
 | S12 | **First-frame styles without a `style` attribute** (e.g. sinter's per-page stylesheet for initial style bindings, or setting them from the early script) | A style binding's initial value is written as a `style` attribute, which `style-src 'self'` blocks: the split needs `style-src-attr 'unsafe-inline'` for a right first frame. | split |
 | S13 | **Unique ids for a component's own elements** (an id the build derives per use, for `aria-controls`, `popovertarget`, `aria-activedescendant`) | An `id` bound from data is SN503 (DOM clobbering) and a literal one breaks with two uses: the pickers open their popovers from the script (`showPopover({ source })`) instead of `popovertarget`, and the palette can only be used once per page (its list's literal id). | pickers, palette |
@@ -487,12 +492,13 @@ Decide these before the component they belong to is built.
   Recommendation: the GitHub dependency (`github:tiavision/sinter-alloy#v0.1.0`) until 0.x settles, then npm.
 - **Q-L1 — Words.** A `text` prop of functions per component (today) or library messages merged into the app's inlang
   project (needs S7)? Recommendation: `text` now, S7 when a second library needs it.
-- **Q-S1 — decided:** the sortable saves itself against one shape, `PUT <list>/order { order }`, with interim props
-  (`resource`, `field`, `save`) until S9/S10; the page-wired form stays for other API shapes.
+- **Q-S1 — decided:** the page saves a move, with an action on the component's tag; the components never save
+  (one way, as sinter: see "Why not a component that saves itself"). A self-saving form against one shape was built
+  and removed.
 - **Q-S2 — Whole row as the grab area.** Handles only (today: clear on touch, never fights a row's click) or also
   the whole row with a mouse after a 4 px threshold? Recommendation: handles only, `grab: 'row'` later if asked.
-- **Q-S4 — A second shape for long lists:** `POST <list>/move { key, after }` for paginated or filtered lists, where the
-  whole order is not loaded. Not before a list needs it.
+- **Q-S4 — settled by Q-S1:** a paginated or filtered list's page sends `{ key, after }` (`$event.detail.after`) to
+  whatever its API takes.
 - **Q-S3 — Where else to reorder in caley first:** mail accounts, CalDAV accounts/calendars, identities. Each needs
   a backend endpoint like `PUT /email/folders/order`; calendars need a `sort_order` column.
 - **Q-B1 — Boards: reorder the lists themselves?** (kanban columns). Not in v1 unless a use appears.
