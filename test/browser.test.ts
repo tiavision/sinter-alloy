@@ -34,6 +34,8 @@ const CARDS = [
 ];
 let cards = structuredClone(CARDS);
 let refuse = false;
+/** ms the mock server waits before answering a write (overlapping saves) */
+let slow = 0;
 const writes: Array<[string, string, unknown]> = [];
 let server: Server;
 let base: string;
@@ -48,7 +50,7 @@ beforeAll(async () => {
     ],
     build: {
       outDir: dist, emptyOutDir: true,
-      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette', 'virtual'].map((n) => [n, join(a.root, `${n}.html`)])) },
+      rollupOptions: { input: Object.fromEntries(['index', 'manual', 'text', 'board', 'board-state', 'split', 'dates', 'palette', 'virtual', 'page-saved'].map((n) => [n, join(a.root, `${n}.html`)])) },
     },
   });
   server = createServer((req, res) => {
@@ -73,8 +75,14 @@ beforeAll(async () => {
         return json(200, [{ id: 'inv', label: 'Invoice #2405', href: '/split/', group: 'Messages' }, { id: 'team', label: 'Team sync', group: 'Events' }]
           .filter((c) => c.label.toLowerCase().includes(q)));
       }
-      if (url.pathname.startsWith('/api/')) {
+      if (url.pathname.startsWith('/api/') && slow && !(req as { waited?: boolean }).waited) {
+        (req as { waited?: boolean }).waited = true;
         writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
+        const again = () => req.emit('end');
+        return void setTimeout(again, slow);
+      }
+      if (url.pathname.startsWith('/api/')) {
+        if (!(req as { waited?: boolean }).waited) writes.push([req.method!, url.pathname, body ? JSON.parse(body) : null]);
         if (refuse) return json(500, { error: 'no' });
         if (url.pathname === '/api/cards/order') {
           const { group, order } = JSON.parse(body) as { group: string; order: string[] };
@@ -114,6 +122,7 @@ beforeEach(() => {
   tasks = structuredClone(START);
   cards = structuredClone(CARDS);
   refuse = false;
+  slow = 0;
   writes.length = 0;
 });
 
@@ -219,6 +228,54 @@ test('a keyboard move saves too; a refused one goes back with the note', async (
   expect(writes.map((w) => w[2])).toEqual([{ order: ['b', 'c', 'a'] }, { order: ['a', 'b', 'c'] }]);
   await check();
 });
+
+// ── the same list saved two ways: by the component (index.html) and by the page (page-saved.html) ──
+
+for (const [how, path, note] of [
+  ['the component saves', '', '.alloy-sortable [role="alert"]'],
+  ['the page saves', 'page-saved/', 'main > [role="alert"]'],
+] as const) {
+  test(`${how}: three fast moves while the server is slow end in the order shown, saved in that order`, async () => {
+    const { page, check } = await open(path);
+    slow = 300;
+    const move = async (name: string, key: string) => {
+      await handle(page, name).focus();
+      await page.keyboard.press('Space');
+      await page.keyboard.press(key);
+      await page.keyboard.press('Space');
+      // the component gives the moved row's handle the focus back a frame later: as a person would, wait for it
+      await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(`Move ${name}`);
+    };
+    // each move shows at once; the next starts before the server has answered the last (300 ms), so they overlap
+    await move('Alpha', 'End');
+    await settled(page, ['b', 'c', 'a']);
+    await move('Beta', 'End');
+    await settled(page, ['c', 'a', 'b']);
+    await move('Gamma', 'End');
+    await settled(page, ['a', 'b', 'c']);
+    expect(writes.length).toBeLessThan(3); // still in flight: not all have been answered (the mock records on arrival)
+    await expect.poll(() => writes.length, { timeout: 5000 }).toBe(3);
+    // the last order sent is the order shown, and the server ends with it
+    expect(writes.at(-1)![2]).toEqual({ order: ['a', 'b', 'c'] });
+    await expect.poll(() => tasks.map((t) => t.id), { timeout: 5000 }).toEqual(['a', 'b', 'c']);
+    await page.waitForTimeout(500);
+    expect(await order(page)).toEqual(['a', 'b', 'c']);
+    await check();
+  });
+
+  test(`${how}: a refused order goes back, with a note`, async () => {
+    const { page, check } = await open(path);
+    refuse = true;
+    await handle(page, 'Alpha').focus();
+    await page.keyboard.press('Space');
+    await page.keyboard.press('End');
+    await page.keyboard.press('Space');
+    await expect.poll(() => writes.length).toBe(1);
+    await settled(page, ['a', 'b', 'c']);
+    await expect.poll(() => page.locator(note).count()).toBe(1);
+    await check();
+  });
+}
 
 test('a touch drag from the handle moves a row on a phone', async () => {
   const { page, check } = await open('', phone);
